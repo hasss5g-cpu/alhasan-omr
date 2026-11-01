@@ -2545,13 +2545,13 @@ const ManafisounLayout = {
       push({ k: 'img', x: 90, y: 4, w: 30, h: 16.3, src: MANAFISOUN_LOGO });
     }
     push({
-      k: 'text', x: 122, y: 4, w: 74, h: 17, cls: '',
-      html: '<div style="line-height:1.35;color:#123;text-align:center;width:100%">' +
-        '<div style="font-size:9.8px;font-weight:900">المملكة العربية السعودية</div>' +
-        '<div style="font-size:6.4px;font-weight:800">وزارة التعليم</div>' +
-        '<div style="font-size:6.4px;font-weight:800">الإدارة العامة للتعليم بمنطقة مكة المكرمة</div>' +
-        '<div style="font-size:6.4px;font-weight:800">الشؤون التعليمية</div>' +
-        '<div style="font-size:6.4px;font-weight:800">إدارة أداء التعليم - قسم الإشراف التربوي</div>' +
+      k: 'text', x: 122, y: 4, w: 74, h: 18, cls: '',
+      html: '<div style="line-height:1.3;color:#123;text-align:center;width:100%">' +
+        '<div style="font-size:11px;font-weight:900">المملكة العربية السعودية</div>' +
+        '<div style="font-size:7px;font-weight:800">وزارة التعليم</div>' +
+        '<div style="font-size:7px;font-weight:800">الإدارة العامة للتعليم بمنطقة مكة المكرمة</div>' +
+        '<div style="font-size:7px;font-weight:800">الشؤون التعليمية</div>' +
+        '<div style="font-size:7px;font-weight:800">إدارة أداء التعليم - قسم الإشراف التربوي</div>' +
         '</div>'
     });
     push({
@@ -2562,50 +2562,50 @@ const ManafisounLayout = {
     });
 
     /* ---------- اسم الطالب ---------- */
-    push({ k: 'rect', x: 12, y: 54, w: 186, h: 11 });
+    push({ k: 'rect', x: 12, y: 49, w: 186, h: 11 });
     push({
-      k: 'text', x: 15, y: 55.5, w: 180, h: 8, cls: 't-center',
+      k: 'text', x: 15, y: 50.5, w: 180, h: 8, cls: 't-center',
       html: '<div style="font-size:8px;color:#333;text-align:center"><b>الاسم الرباعي:</b> ' +
         '<span style="font-size:12.2px;font-weight:900;color:#000">' + esc(v.studentName || '') + '</span></div>'
     });
 
     /* ---------- رقم السجل + رمز المدرسة + بيانات المدرسة ---------- */
-    push({ k: 'rect', x: 12, y: 68, w: 78, h: 40 });
-    push({ k: 'text', x: 14, y: 69, w: 74, h: 5, cls: 't-center', html: '<div style="font-size:7px;font-weight:800">رقم السجل المدني / رقم الإقامة</div>' });
-    push({ k: 'img', x: 16, y: 76, w: 50, h: 15, src: v.barcode || '' });
+    push({ k: 'rect', x: 12, y: 63, w: 78, h: 40 });
+    push({ k: 'text', x: 14, y: 64, w: 74, h: 5, cls: 't-center', html: '<div style="font-size:7px;font-weight:800">رقم السجل المدني / رقم الإقامة</div>' });
+    push({ k: 'img', x: 16, y: 71, w: 50, h: 15, src: v.barcode || '' });
     push({
-      k: 'text', x: 16, y: 92, w: 50, h: 8, cls: 'sid',
+      k: 'text', x: 16, y: 87, w: 50, h: 8, cls: 'sid',
       html: '<div style="font-family:\'Courier New\',monospace;font-size:13px;font-weight:900;letter-spacing:1.2px;text-align:center">' +
         esc(v.studentId || '') + '</div>'
     });
-    push({ k: 'text', x: 16, y: 100, w: 50, h: 4, cls: 't-center', html: '<div style="font-size:6px;color:#666">باركود الطالب — يُقرأ آلياً</div>' });
+    push({ k: 'text', x: 16, y: 95, w: 50, h: 4, cls: 't-center', html: '<div style="font-size:6px;color:#666">باركود الطالب — يُقرأ آلياً</div>' });
 
-    push({ k: 'rect', x: 92, y: 68, w: 36, h: 40 });
-    push({ k: 'text', x: 93, y: 69, w: 34, h: 5, cls: 't-center', html: '<div style="font-size:7px;font-weight:800">رمز المدرسة</div>' });
-    push({ k: 'text', x: 94, y: 80, w: 32, h: 12, cls: 'sid', html: '<div style="font-size:20px;font-weight:900;text-align:center">' + esc(v.schoolCode || '—') + '</div>' });
+    push({ k: 'rect', x: 92, y: 63, w: 36, h: 40 });
+    push({ k: 'text', x: 93, y: 64, w: 34, h: 5, cls: 't-center', html: '<div style="font-size:7px;font-weight:800">رمز المدرسة</div>' });
+    push({ k: 'text', x: 94, y: 75, w: 32, h: 12, cls: 'sid', html: '<div style="font-size:20px;font-weight:900;text-align:center">' + esc(v.schoolCode || '—') + '</div>' });
 
-    push({ k: 'rect', x: 130, y: 68, w: 68, h: 40 });
+    push({ k: 'rect', x: 130, y: 63, w: 68, h: 40 });
     push({
-      k: 'text', x: 132, y: 69.5, w: 64, h: 12, cls: 't-center',
+      k: 'text', x: 132, y: 64.5, w: 64, h: 12, cls: 't-center',
       html: '<div style="font-size:7.3px;font-weight:800;line-height:1.5;text-align:center">اسم المدرسة:<br>' +
         '<span style="font-size:8.4px;font-weight:900">' + esc(v.schoolName || '') + '</span></div>'
     });
     push({
-      k: 'text', x: 132, y: 83, w: 64, h: 9, cls: 't-center',
+      k: 'text', x: 132, y: 78, w: 64, h: 9, cls: 't-center',
       html: '<div style="font-size:7.3px;font-weight:800;text-align:center">الصف: <span style="font-size:9px">' + esc(v.gradeShort || v.gradeName || '') + '</span><br>' +
         'الفصل: <span style="font-size:9px">' + esc(v.section || '—') + '</span></div>'
     });
-    push({ k: 'text', x: 132, y: 96, w: 64, h: 8, cls: 't-center', html: '<div style="font-size:6.4px;color:#666;text-align:center">العام الدراسي: ' + esc(v.schoolYear || '1448') + ' هـ</div>' });
+    push({ k: 'text', x: 132, y: 91, w: 64, h: 8, cls: 't-center', html: '<div style="font-size:6.4px;color:#666;text-align:center">العام الدراسي: ' + esc(v.schoolYear || '1448') + ' هـ</div>' });
 
     /* ---------- إجابات الأسئلة ---------- */
-    push({ k: 'rect', x: 12, y: 111, w: 186, h: 7 });
-    push({ k: 'text', x: 12, y: 112, w: 186, h: 5, cls: 't-center', html: '<div style="font-size:9px;font-weight:900;color:#0b3d3b">إجابات الأسئلة</div>' });
+    push({ k: 'rect', x: 12, y: 107, w: 186, h: 7 });
+    push({ k: 'text', x: 12, y: 108, w: 186, h: 5, cls: 't-center', html: '<div style="font-size:9px;font-weight:900;color:#0b3d3b">إجابات الأسئلة</div>' });
 
     const groups = MANAFISOUN.groups;
     const labels = (v.groupLabels && v.groupLabels.length === 3) ? v.groupLabels : groups.map((g) => g.label);
     const groupW = 60, gap = 3;
     const startX = 12;
-    const rowTop = 128, rowH = 14.7;
+    const rowTop = 124, rowH = 14.7;
     const bubD = 4.2, optGap = 1.9;
 
     groups.forEach((grp, gi) => {
@@ -2653,7 +2653,7 @@ const ManafisounLayout = {
 
     return {
       ok: true, blocks: blocks, marks: [[6, 6], [198, 6], [6, 285], [198, 285]],
-      barcode: { x: 16, y: 76, w: 50, h: 15 }
+      barcode: { x: 16, y: 71, w: 50, h: 15 }
     };
   }
 };
