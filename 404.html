@@ -1171,12 +1171,26 @@ tbody tr:hover td{background:#f8fbff}
           <div class="mnf-copy">
             <div class="mnf-kicker">مبادرة منافسون · العام الدراسي 1448 هـ</div>
             <h2>رصد اختبار منافسون</h2>
-            <p>30 فقرة · 10 رياضيات + 10 لغتي + 10 علوم · درجة واحدة لكل فقرة · ورقة تظليل تُقرأ آلياً.</p>
+            <p id="mnfHeroDesc">30 فقرة · 10 رياضيات + 10 لغتي + 10 علوم · درجة واحدة لكل فقرة · ورقة تظليل تُقرأ آلياً.</p>
           </div>
           <div class="mnf-stats">
             <div><b id="mnfStatStudents">0</b><span>طالب في الصف</span></div>
             <div><b id="mnfStatKey">0/30</b><span>مفتاح الإجابة</span></div>
             <div><b id="mnfStatResults">0</b><span>ورقة مصححة</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h3><svg class="ic"><use href="#i-layers"/></svg> أسماء المواد فوق الأعمدة</h3><span class="sp"></span><span class="badge grey">تظهر من اليمين إلى اليسار</span></div>
+          <div class="grid g3">
+            <div class="field"><label>العمود الأول (يمين) · فقرات 1–10</label><input type="text" id="mnfLabel0" maxlength="24" placeholder="الرياضيات"></div>
+            <div class="field"><label>العمود الثاني · فقرات 11–20</label><input type="text" id="mnfLabel1" maxlength="24" placeholder="لغتي"></div>
+            <div class="field"><label>العمود الثالث (يسار) · فقرات 21–30</label><input type="text" id="mnfLabel2" maxlength="24" placeholder="العلوم"></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-primary btn-sm" onclick="App.saveManafisounLabels()"><svg class="ic"><use href="#i-save"/></svg> حفظ أسماء المواد</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.resetManafisounLabels()">استعادة الافتراضي</button>
+            <span class="hint">تُطبع فوق الأعمدة في ورقة الطالب، وتُحدَّث في محرر المفتاح.</span>
           </div>
         </div>
 
@@ -1796,6 +1810,7 @@ function defaultData() {
     students: [],
     exams: {},
     results: [],
+    manafisoun: { labels: ['الرياضيات', 'لغتي', 'العلوم'] },
     settings: { threshold: 145, multi: 78, lvAdv: 80, lvProf: 60 },
     meta: { created: Date.now() }
   };
@@ -1811,6 +1826,7 @@ const DB = {
         this.d = Object.assign(defaultData(), loaded);
         this.d.school = Object.assign(defaultData().school, loaded.school || {});
         this.d.settings = Object.assign(defaultData().settings, loaded.settings || {});
+        this.d.manafisoun = Object.assign(defaultData().manafisoun, loaded.manafisoun || {});
         if (!Array.isArray(this.d.students)) this.d.students = [];
         if (!Array.isArray(this.d.results)) this.d.results = [];
         if (!this.d.exams || typeof this.d.exams !== 'object') this.d.exams = {};
@@ -1825,6 +1841,14 @@ const DB = {
   },
 
   repair() {
+    const defLabels = ['الرياضيات', 'لغتي', 'العلوم'];
+    if (!this.d.manafisoun || typeof this.d.manafisoun !== 'object') this.d.manafisoun = { labels: defLabels.slice() };
+    if (!Array.isArray(this.d.manafisoun.labels)) this.d.manafisoun.labels = defLabels.slice();
+    for (let i = 0; i < 3; i++) {
+      if (!this.d.manafisoun.labels[i] || !String(this.d.manafisoun.labels[i]).trim()) {
+        this.d.manafisoun.labels[i] = defLabels[i];
+      }
+    }
     this.d.students.forEach((s) => {
       if (!s.sid) s.sid = uid('s');
       if (!s.gradeKey || !GRADE_BY_KEY[s.gradeKey]) {
@@ -2396,7 +2420,7 @@ const Sheet = {
       '.abs.label{display:flex;align-items:center;justify-content:center;font-weight:900;line-height:1}',
       '.abs.num{display:flex;align-items:center;justify-content:center;font-size:7.9px;font-weight:900;font-family:"Courier New",monospace;line-height:1}',
       '.abs.num.tiny{font-size:5.9px;font-weight:700;color:#222}',
-      '.abs.num.qbig{font-size:10.5px;font-weight:900}',
+      '.abs.num.qbig{font-size:12.6px;font-weight:900}',
       '.abs.bub{border:1.1px solid #000;background:#fff;border-radius:50%}',
       '.abs.bub.pill{border-radius:1.6mm}',
       '.abs.bub.f{background:#000}',
@@ -2465,7 +2489,7 @@ const Sheet = {
   view(exam, gradeKey, subjectId) {
     const g = gradeByKey(gradeKey), sb = subjectById(subjectId);
     const total = (exam.questions || []).reduce((a, q) => a + (Number(q.points) || 0) * (q.type === 'essay' ? 1 : (parseInt(q.count, 10) || 1)), 0);
-    return Object.assign({}, exam, {
+    const out = Object.assign({}, exam, {
       schoolName: DB.d.school.name || 'اسم المدرسة',
       schoolEdu: DB.d.school.edu || '',
       schoolYear: DB.d.school.year || '',
@@ -2475,6 +2499,15 @@ const Sheet = {
       totalPoints: total,
       code: this.code(gradeKey, subjectId)
     });
+    if (subjectId === 'manafisoun') {
+      const defaults = MANAFISOUN.groups.map((grp) => grp.label);
+      const custom = (DB.d.manafisoun && Array.isArray(DB.d.manafisoun.labels)) ? DB.d.manafisoun.labels : [];
+      out.groupLabels = defaults.map((d, i) => {
+        const v = custom[i] == null ? '' : String(custom[i]).trim();
+        return v || d;
+      });
+    }
+    return out;
   },
 
   code(gradeKey, subjectId) {
@@ -2562,33 +2595,35 @@ const ManafisounLayout = {
     push({ k: 'text', x: 12, y: 112, w: 186, h: 5, cls: 't-center', html: '<div style="font-size:9px;font-weight:900;color:#0b3d3b">إجابات الأسئلة</div>' });
 
     const groups = MANAFISOUN.groups;
+    const labels = (v.groupLabels && v.groupLabels.length === 3) ? v.groupLabels : groups.map((g) => g.label);
     const groupW = 60, gap = 3;
     const startX = 12;
     const rowTop = 128, rowH = 14.7;
     const bubD = 4.2, optGap = 1.9;
 
     groups.forEach((grp, gi) => {
-      const gx = startX + gi * (groupW + gap);
+      /* العمود الأول يبدأ من اليمين: الرياضيات يمينًا ثم لغتي ثم العلوم */
+      const gx = startX + (groups.length - 1 - gi) * (groupW + gap);
       const gr = gx + groupW;               // الحد الأيمن للمجموعة (RTL)
       const optsRight = gr - 9;             // بعد رقم السؤال
       /* عنوان المادة — فوق منطقة الفقاعات نفسها */
       push({
         k: 'text', x: optsRight - 26, y: 119, w: 26, h: 4, cls: 't-center',
-        html: '<div style="font-size:7.2px;font-weight:900;color:#0b3d3b">' + esc(grp.label) + '</div>'
+        html: '<div style="font-size:7.2px;font-weight:900;color:#0b3d3b">' + esc(labels[gi] || grp.label) + '</div>'
       });
       /* رؤوس الخيارات */
       for (let o = 0; o < 4; o++) {
         const cx = optsRight - bubD / 2 - o * (bubD + optGap);
         push({
-          k: 'label', x: cx - 3, y: 122.5, w: 6, h: 4.2,
-          html: LETTERS[o], size: 10.2
+          k: 'label', x: cx - 3.2, y: 122.2, w: 6.4, h: 4.8,
+          html: LETTERS[o], size: 12.2
         });
       }
       /* 10 أسئلة */
       for (let r = 0; r < 10; r++) {
         const q = grp.from + r;
         const cy = rowTop + r * rowH + rowH / 2;
-        push({ k: 'num', x: gr - 8.5, y: cy - 2.6, w: 7.5, h: 5.2, html: String(q), cls: 'qbig' });
+        push({ k: 'num', x: gr - 8.5, y: cy - 2.8, w: 7.5, h: 5.6, html: String(q), cls: 'qbig' });
         for (let o = 0; o < 4; o++) {
           const cx = optsRight - bubD / 2 - o * (bubD + optGap);
           push({
@@ -5361,6 +5396,15 @@ Object.assign(App, {
     return list;
   },
 
+  mnfLabels() {
+    const defaults = MANAFISOUN.groups.map((g) => g.label);
+    const arr = (DB.d.manafisoun && Array.isArray(DB.d.manafisoun.labels)) ? DB.d.manafisoun.labels : [];
+    return defaults.map((d, i) => {
+      const v = arr[i] == null ? '' : String(arr[i]).trim();
+      return v || d;
+    });
+  },
+
   mnfKeyCount(ex) {
     if (!ex || !ex.answerKey) return 0;
     let n = 0;
@@ -5403,6 +5447,16 @@ Object.assign(App, {
     if ($('mnfKeyBadge')) $('mnfKeyBadge').textContent = keyed + '/30';
     if ($('mnfCount')) $('mnfCount').innerHTML = 'الطلاب: <b>' + students.length + '</b> · الفصل: <b>' + esc(st.section || 'كل الفصول') + '</b> · ' + esc(gradeByKey(st.grade).name);
 
+    const labels = this.mnfLabels();
+    for (let i = 0; i < 3; i++) {
+      const el = $('mnfLabel' + i);
+      if (el && document.activeElement !== el) el.value = labels[i];
+    }
+    if ($('mnfHeroDesc')) {
+      $('mnfHeroDesc').textContent = '30 فقرة · 10 ' + labels[0] + ' + 10 ' + labels[1] + ' + 10 ' + labels[2] +
+        ' · درجة واحدة لكل فقرة · ورقة تظليل تُقرأ آلياً.';
+    }
+
     this.renderManafisounKey();
     this.renderManafisounResults();
   },
@@ -5416,12 +5470,13 @@ Object.assign(App, {
       return;
     }
     const items = Layout.enumerate(ex);
+    const labels = this.mnfLabels();
     const byGroup = {};
     MANAFISOUN.groups.forEach((g) => { byGroup[g.label] = []; });
     items.forEach((it) => { (byGroup[it.q.domain] = byGroup[it.q.domain] || []).push(it); });
-    box.innerHTML = MANAFISOUN.groups.map((g) => {
+    box.innerHTML = MANAFISOUN.groups.map((g, gi) => {
       const its = byGroup[g.label] || [];
-      return '<div class="mnf-key-col"><div class="mnf-key-head">' + esc(g.label) + '</div>' +
+      return '<div class="mnf-key-col"><div class="mnf-key-head">' + esc(labels[gi]) + '</div>' +
         its.map((it) => {
           const cur = ex.answerKey[it.n];
           return '<div class="mnf-key-item"><span class="n">' + it.n + '</span><div class="opts">' +
@@ -5465,6 +5520,30 @@ Object.assign(App, {
     DB.touchExam(ex);
     const n = this.mnfKeyCount(ex);
     toast(n === 30 ? 'تم حفظ مفتاح منافسون (30/30)' : 'تم حفظ المفتاح (' + n + '/30) — ما زال ناقصاً', n === 30 ? 'ok' : 'warn');
+  },
+
+  saveManafisounLabels() {
+    const cur = this.mnfLabels();
+    const labels = [0, 1, 2].map((i) => {
+      const el = $('mnfLabel' + i);
+      const v = el ? String(el.value || '').trim() : '';
+      return v || cur[i];
+    });
+    if (!DB.d.manafisoun) DB.d.manafisoun = {};
+    DB.d.manafisoun.labels = labels;
+    DB.save();
+    this.state.mnfSheets = null;
+    this.renderManafisoun();
+    toast('تم حفظ أسماء المواد', 'ok');
+  },
+
+  resetManafisounLabels() {
+    if (!DB.d.manafisoun) DB.d.manafisoun = {};
+    DB.d.manafisoun.labels = MANAFISOUN.groups.map((g) => g.label);
+    DB.save();
+    this.state.mnfSheets = null;
+    this.renderManafisoun();
+    toast('تمت استعادة الأسماء الافتراضية', 'ok');
   },
 
   manafisounPrepare() {
@@ -5590,7 +5669,19 @@ Object.assign(App, {
     const ws = wb.worksheets[0];
     const g = gradeByKey(this.state.manafisoun.grade);
     const school = DB.d.school.name || '';
+    const labels = this.mnfLabels();
     ws.name = g.short;
+
+    /* أسماء المواد المخصصة في رأس الجدول */
+    ws.getCell('D4').value = labels[0];
+    ws.getCell('N4').value = labels[1];
+    ws.getCell('X4').value = labels[2];
+    ws.getCell('AH4').value = 'مجموع ' + labels[2] + '/ 10 د';
+    ws.getCell('AI4').value = 'مجموع ' + labels[0] + '/10 د';
+    ws.getCell('AJ4').value = 'مجموع ' + labels[1] + '/ 10د';
+    ws.getCell('AL5').value = 'متوسط ' + labels[0];
+    ws.getCell('AL7').value = 'متوسط ' + labels[1];
+    ws.getCell('AL9').value = 'متوسط ' + labels[2];
 
     /* تنظيف صفوف الطلاب (6–105) مع الإبقاء على التنسيق والمعادلات العامة */
     for (let r = 6; r <= 105; r++) {
