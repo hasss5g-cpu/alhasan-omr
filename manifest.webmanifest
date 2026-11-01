@@ -1,0 +1,54 @@
+{
+  "name": "التصحيح الآلي — الحسن المعشي",
+  "short_name": "التصحيح الآلي",
+  "description": "منصة التصحيح الآلي واختبارات نافس: أوراق إجابة بباركود لكل طالب، تصحيح بالكاميرا أو الماسح، وتحليل نتائج.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#081c33",
+  "theme_color": "#081c33",
+  "categories": [
+    "education",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "تصميم اختبار",
+      "short_name": "تصميم",
+      "url": "./#design"
+    },
+    {
+      "name": "التصحيح الآلي",
+      "short_name": "تصحيح",
+      "url": "./#scan"
+    },
+    {
+      "name": "النتائج",
+      "short_name": "نتائج",
+      "url": "./#results"
+    }
+  ]
+}
