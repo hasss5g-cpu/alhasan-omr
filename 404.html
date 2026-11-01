@@ -2524,8 +2524,8 @@ const ManafisounLayout = {
     /* ---------- اسم الطالب ---------- */
     push({ k: 'rect', x: 12, y: 54, w: 186, h: 11 });
     push({
-      k: 'text', x: 15, y: 55.5, w: 180, h: 8, cls: 't-right',
-      html: '<div style="font-size:8px;color:#333"><b>الاسم الرباعي:</b> ' +
+      k: 'text', x: 15, y: 55.5, w: 180, h: 8, cls: 't-center',
+      html: '<div style="font-size:8px;color:#333;text-align:center"><b>الاسم الرباعي:</b> ' +
         '<span style="font-size:12.2px;font-weight:900;color:#000">' + esc(v.studentName || '') + '</span></div>'
     });
 
@@ -2546,16 +2546,16 @@ const ManafisounLayout = {
 
     push({ k: 'rect', x: 130, y: 68, w: 68, h: 40 });
     push({
-      k: 'text', x: 132, y: 69.5, w: 64, h: 12, cls: 't-right',
-      html: '<div style="font-size:7.3px;font-weight:800;line-height:1.5">اسم المدرسة:<br>' +
+      k: 'text', x: 132, y: 69.5, w: 64, h: 12, cls: 't-center',
+      html: '<div style="font-size:7.3px;font-weight:800;line-height:1.5;text-align:center">اسم المدرسة:<br>' +
         '<span style="font-size:8.4px;font-weight:900">' + esc(v.schoolName || '') + '</span></div>'
     });
     push({
-      k: 'text', x: 132, y: 83, w: 64, h: 9, cls: 't-right',
-      html: '<div style="font-size:7.3px;font-weight:800">الصف: <span style="font-size:9px">' + esc(v.gradeShort || v.gradeName || '') + '</span><br>' +
+      k: 'text', x: 132, y: 83, w: 64, h: 9, cls: 't-center',
+      html: '<div style="font-size:7.3px;font-weight:800;text-align:center">الصف: <span style="font-size:9px">' + esc(v.gradeShort || v.gradeName || '') + '</span><br>' +
         'الفصل: <span style="font-size:9px">' + esc(v.section || '—') + '</span></div>'
     });
-    push({ k: 'text', x: 132, y: 96, w: 64, h: 8, cls: 't-right', html: '<div style="font-size:6.4px;color:#666">العام الدراسي: ' + esc(v.schoolYear || '1448') + ' هـ</div>' });
+    push({ k: 'text', x: 132, y: 96, w: 64, h: 8, cls: 't-center', html: '<div style="font-size:6.4px;color:#666;text-align:center">العام الدراسي: ' + esc(v.schoolYear || '1448') + ' هـ</div>' });
 
     /* ---------- إجابات الأسئلة ---------- */
     push({ k: 'rect', x: 12, y: 111, w: 186, h: 7 });
