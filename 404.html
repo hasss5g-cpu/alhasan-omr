@@ -2417,13 +2417,15 @@ const Sheet = {
       '.abs.text.name{font-size:15.4px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}',
       '.abs.text.sid{font-family:"Courier New",monospace;font-weight:900;font-size:15.5px;letter-spacing:1.6px;align-items:center;text-align:center;white-space:nowrap}',
       '.abs.text.qtext{font-size:9.2px;font-weight:700;border:.8px dashed #666;padding:0 1.4mm;background:#fbfcfd;justify-content:center}',
-      '.abs.label{display:flex;align-items:center;justify-content:center;font-weight:900;line-height:1}',
+      '.abs.label{display:grid;place-items:center;font-weight:900;line-height:1;text-align:center;direction:ltr}',
       '.abs.num{display:flex;align-items:center;justify-content:center;font-size:7.9px;font-weight:900;font-family:"Courier New",monospace;line-height:1}',
       '.abs.num.tiny{font-size:5.9px;font-weight:700;color:#222}',
       '.abs.num.qbig{font-size:12.6px;font-weight:900}',
-      '.abs.bub{border:1.1px solid #000;background:#fff;border-radius:50%}',
+      '.abs.bub{border:1.1px solid #000;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center}',
       '.abs.bub.pill{border-radius:1.6mm}',
       '.abs.bub.f{background:#000}',
+      '.abs.bub .bub-letter{font-size:8.2px;font-weight:700;color:#1f2933;line-height:1;letter-spacing:0;pointer-events:none}',
+      '.abs.bub.f .bub-letter{color:transparent}',
       '.abs.img{display:flex;align-items:center;justify-content:center}',
       '.abs.img img{width:100%;height:100%;object-fit:contain;display:block}',
       '.abs.line{border-bottom:.6px dotted #777;height:0}',
@@ -2477,7 +2479,9 @@ const Sheet = {
         const filled = answers[b.q] != null && String(answers[b.q]) === String(b.l);
         out += '<div class="abs bub ' + (b.round === 'pill' ? 'pill ' : '') + (filled ? 'f' : '') + '" ' +
           'data-q="' + b.q + '" data-l="' + esc(b.l) + '" ' +
-          'style="left:' + mm(b.x) + ';top:' + mm(b.y) + ';width:' + mm(b.w) + ';height:' + mm(b.h) + '"></div>';
+          'style="left:' + mm(b.x) + ';top:' + mm(b.y) + ';width:' + mm(b.w) + ';height:' + mm(b.h) + '">' +
+          (b.letter ? '<span class="bub-letter" style="font-size:' + (b.letterSize || 7.4) + 'px">' + esc(b.letter) + '</span>' : '') +
+          '</div>';
         return;
       }
     });
@@ -2615,8 +2619,8 @@ const ManafisounLayout = {
       for (let o = 0; o < 4; o++) {
         const cx = optsRight - bubD / 2 - o * (bubD + optGap);
         push({
-          k: 'label', x: cx - 3.2, y: 122.2, w: 6.4, h: 4.8,
-          html: LETTERS[o], size: 12.2
+          k: 'label', x: cx - bubD / 2, y: 122.2, w: bubD, h: 4.8,
+          html: LETTERS[o], size: 11.2
         });
       }
       /* 10 أسئلة */
@@ -2628,7 +2632,8 @@ const ManafisounLayout = {
           const cx = optsRight - bubD / 2 - o * (bubD + optGap);
           push({
             k: 'bub', x: cx - bubD / 2, y: cy - bubD / 2, w: bubD, h: bubD,
-            q: q, l: LETTERS[o], kind: 'opt', round: 'circle'
+            q: q, l: LETTERS[o], kind: 'opt', round: 'circle',
+            letter: LETTERS[o], letterSize: 8.2
           });
         }
         /* خط فاصل خفيف أسفل السؤال */
@@ -6431,7 +6436,15 @@ async function runManafisounTest() {
       const rx = (b.w / 2) * K, ry = (b.h / 2) * K;
       sx.beginPath(); sx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
       if (String(expected[b.q]) === String(b.l)) { sx.fillStyle = '#111'; sx.fill(); }
-      else { sx.strokeStyle = '#000'; sx.lineWidth = 1.1; sx.stroke(); }
+      else {
+        sx.strokeStyle = '#000'; sx.lineWidth = 1.1; sx.stroke();
+        if (b.letter) {
+          sx.fillStyle = '#1f2933';
+          sx.font = '700 ' + Math.max(7, Math.round((b.letterSize || 8.2) * K / 3.7795)) + 'px Tahoma';
+          sx.textAlign = 'center'; sx.textBaseline = 'middle';
+          sx.fillText(b.letter, cx, cy);
+        }
+      }
     }
   });
   /* barcode */
@@ -6506,7 +6519,15 @@ async function runManafisounE2E() {
       const rx = (b.w / 2) * K, ry = (b.h / 2) * K;
       sx.beginPath(); sx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
       if (String(expected[b.q]) === String(b.l)) { sx.fillStyle = '#111'; sx.fill(); }
-      else { sx.strokeStyle = '#000'; sx.lineWidth = 1.1; sx.stroke(); }
+      else {
+        sx.strokeStyle = '#000'; sx.lineWidth = 1.1; sx.stroke();
+        if (b.letter) {
+          sx.fillStyle = '#1f2933';
+          sx.font = '700 ' + Math.max(7, Math.round((b.letterSize || 8.2) * K / 3.7795)) + 'px Tahoma';
+          sx.textAlign = 'center'; sx.textBaseline = 'middle';
+          sx.fillText(b.letter, cx, cy);
+        }
+      }
     }
   });
   try {
