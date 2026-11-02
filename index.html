@@ -812,6 +812,21 @@ tbody tr:hover td{background:#f8fbff}
 #mnfPickerCard .mnf-st-row{padding:3px 7px}
 #mnfPickerCard .mnf-st-name{font-size:11px}
 #mnfPickerCard .hint{font-size:9px}
+
+/* ---------- مراجعة حالات منافسون ---------- */
+.mnf-rv-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.mnf-rv-card{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;text-align:center}
+.mnf-rv-card b{display:block;font-size:18px;font-weight:900;color:var(--navy)}
+.mnf-rv-card span{font-size:9.5px;color:#6b7f95}
+.mnf-rv-card.red b{color:#b3261e}
+.mnf-rv-card.gold b{color:#a9780f}
+.mnf-rv-card.blue b{color:#1558a8}
+.mnf-rv-opts{display:flex;gap:3px;flex-wrap:wrap}
+.mnf-rv-opt{width:28px;height:28px;border-radius:8px;border:1px solid #c9d6e4;background:#fff;color:#0b3d3b;font:800 11px Tahoma;cursor:pointer}
+.mnf-rv-opt:hover{border-color:#1558a8;background:#eef5ff}
+.mnf-rv-opt.on{background:#0f7a56;border-color:#0f7a56;color:#fff}
+.mnf-rv-opt.blank{color:#a32d20;border-color:#eccfca;background:#fdf3f1}
+@media(max-width:700px){.mnf-rv-cards{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -1273,6 +1288,7 @@ tbody tr:hover td{background:#f8fbff}
           <div class="row" style="margin-bottom:10px">
             <button class="btn btn-primary" onclick="App.manafisounScan()"><svg class="ic"><use href="#i-camera"/></svg> تصحيح أوراق منافسون</button>
             <button class="btn btn-ghost" onclick="App.manafisounResults()"><svg class="ic"><use href="#i-chart"/></svg> عرض النتائج</button>
+            <button class="btn btn-soft" onclick="App.manafisounReview()"><svg class="ic"><use href="#i-eye"/></svg> مراجعة الحالات <span class="badge" id="mnfReviewCount">0</span></button>
             <span class="sp"></span>
             <button class="btn btn-soft" onclick="App.exportManafisounDetailedExcel()"><svg class="ic"><use href="#i-download"/></svg> تصدير Excel مفصل</button>
             <button class="btn btn-gold" onclick="App.exportManafisounExcel()"><svg class="ic"><use href="#i-download"/></svg> تصدير رصد منافسون Excel</button>
@@ -3050,7 +3066,7 @@ const OMR = {
       let multi = null;
       if (filled && second.dark >= thr && second.dark >= best.dark * multiRatio) multi = second.l;
       if (filled) answers[q] = best.l;
-      detail[q] = { letter: filled ? best.l : null, dark: Math.round(best.dark), second: Math.round(second.dark), multi: multi, kind: best.kind };
+      detail[q] = { letter: filled ? best.l : null, dark: Math.round(best.dark), second: Math.round(second.dark), secondLetter: second.l || null, multi: multi, kind: best.kind };
     });
     return { answers: answers, detail: detail };
   },
@@ -4540,7 +4556,8 @@ Object.assign(App, {
         gradeKey: s.gradeKey, subjectId: exam.subjectId,
         score: ev.score, total: ev.total, pct: ev.pct,
         correct: ev.correct, wrong: ev.wrong, blank: ev.blank,
-        perQ: ev.perQ, answers: r.answers, at: Date.now(), file: r.file
+        perQ: ev.perQ, answers: r.answers, at: Date.now(), file: r.file,
+        detail: r.detail || {}, threshold: DB.d.settings.threshold, multi: DB.d.settings.multi
       });
     });
     toast('تم اعتماد ' + rows.length + ' نتيجة', 'ok');
@@ -5787,6 +5804,11 @@ Object.assign(App, {
     if (!tb) return;
     const list = this.mnfResults().slice().sort((a, b) => String(a.studentName || '').localeCompare(String(b.studentName || ''), 'ar'));
     if ($('mnfResultBadge')) $('mnfResultBadge').textContent = list.length + ' نتيجة';
+    const reviewN = this.mnfReviewCases().length;
+    if ($('mnfReviewCount')) {
+      $('mnfReviewCount').textContent = reviewN;
+      $('mnfReviewCount').classList.toggle('red', reviewN > 0);
+    }
     if (!list.length) {
       tb.innerHTML = '<tr class="empty-row"><td colspan="8">لا توجد نتائج بعد — صحّح أوراق منافسون أولاً</td></tr>';
       return;
@@ -5802,6 +5824,99 @@ Object.assign(App, {
         '<td><b style="color:#0f4c81">' + sc.total + '</b> / 30</td>' +
         '<td>' + nfmt(sc.pct, 1) + '%</td></tr>';
     }).join('');
+  },
+
+  mnfReviewCases() {
+    const list = this.mnfResults();
+    const cases = [];
+    const defThr = Number(DB.d.settings.threshold) || 145;
+    list.forEach((r) => {
+      const det = r.detail || {};
+      const answers = r.answers || {};
+      const thr = Number(r.threshold) || defThr;
+      for (let q = 1; q <= 30; q++) {
+        const d = det[q];
+        if (!d || d.reviewed) continue;
+        const ans = answers[q];
+        const dark = Number(d.dark) || 0;
+        const second = Number(d.second) || 0;
+        let type = '', label = '', letters = '';
+        if (d.multi) {
+          type = 'multi'; label = 'إجابتان'; letters = d.letter + ' + ' + d.multi;
+        } else if (!ans || !d.letter) {
+          if (dark >= 55) { type = 'unclear'; label = 'تظليل باهت'; letters = '—'; }
+          else { type = 'blank'; label = 'إجابة متروكة'; letters = '—'; }
+        } else if (dark < thr + 25) {
+          type = 'unclear'; label = 'تظليل غير واضح'; letters = d.letter;
+        } else if (second >= Math.max(70, thr * 0.55) && second >= dark * 0.5) {
+          type = 'suspect'; label = 'احتمال إجابتين'; letters = d.letter + ' + ' + (d.secondLetter || '?');
+        }
+        if (type) cases.push({ r: r, q: q, type: type, label: label, letters: letters, dark: dark, second: second, thr: thr });
+      }
+    });
+    return cases;
+  },
+
+  manafisounReview() {
+    const list = this.mnfResults();
+    const cases = this.mnfReviewCases();
+    const counts = { blank: 0, multi: 0, unclear: 0, suspect: 0 };
+    cases.forEach((c) => { counts[c.type] = (counts[c.type] || 0) + 1; });
+    let body = '';
+    if (!cases.length) {
+      const hasDetail = list.some((r) => r.detail && Object.keys(r.detail).length);
+      body = '<div class="notice ok" style="font-size:13px">' +
+        (list.length && !hasDetail ? 'لا توجد تفاصيل تظليل محفوظة لهذه النتائج — أعد تصحيح الأوراق لتفعيل المراجعة.' : 'لا توجد حالات تحتاج مراجعة — كل الإجابات واضحة.') +
+        '</div>';
+    } else {
+      body = '<div class="mnf-rv-cards">' +
+        '<div class="mnf-rv-card red"><b>' + counts.blank + '</b><span>إجابة متروكة</span></div>' +
+        '<div class="mnf-rv-card gold"><b>' + counts.multi + '</b><span>إجابتان</span></div>' +
+        '<div class="mnf-rv-card blue"><b>' + (counts.unclear + counts.suspect) + '</b><span>غير واضح</span></div>' +
+        '<div class="mnf-rv-card"><b>' + cases.length + '</b><span>إجمالي الحالات</span></div>' +
+        '</div>' +
+        '<div class="tbl-wrap" style="max-height:58vh;border:1px solid var(--line);border-radius:10px">' +
+        '<table><thead><tr><th>#</th><th>الطالب</th><th>السؤال</th><th>الحالة</th><th>القراءة</th><th>التصحيح اليدوي</th></tr></thead><tbody>';
+      cases.forEach((c, i) => {
+        const r = c.r;
+        const opts = LETTERS.map((l) => '<button class="mnf-rv-opt' + (String(c.letters).indexOf(l) >= 0 ? ' on' : '') +
+          '" onclick="App.mnfResolve(\'' + esc(r.rid) + '\',' + c.q + ',\'' + l + '\')">' + l + '</button>').join('');
+        body += '<tr><td>' + (i + 1) + '</td>' +
+          '<td><b>' + esc(r.studentName || '—') + '</b><div class="mono" style="font-size:10px;color:#8296ad">' + esc(r.studentId || '') + '</div></td>' +
+          '<td><b>' + c.q + '</b></td>' +
+          '<td><span class="badge ' + (c.type === 'multi' ? 'gold' : c.type === 'blank' ? 'red' : '') + '">' + c.label + '</span></td>' +
+          '<td class="mono">' + esc(c.letters) + '<div style="font-size:9.5px;color:#8296ad">قوة ' + c.dark + ' · ثاني ' + c.second + '</div></td>' +
+          '<td><div class="mnf-rv-opts">' + opts +
+          '<button class="mnf-rv-opt blank" onclick="App.mnfResolve(\'' + esc(r.rid) + '\',' + c.q + ',null)">—</button></div></td></tr>';
+      });
+      body += '</tbody></table></div>';
+    }
+    const foot = '<button class="btn btn-ghost" onclick="App.closeModal()">إغلاق</button><span class="sp"></span>' +
+      '<button class="btn btn-soft" onclick="App.manafisounReview()"><svg class="ic"><use href="#i-refresh"/></svg> تحديث</button>';
+    this.modal('مراجعة حالات التصحيح — ' + cases.length + ' حالة', body, foot, true);
+  },
+
+  mnfResolve(rid, q, letter) {
+    const r = DB.d.results.find((x) => x.rid === rid);
+    if (!r) return;
+    const ex = DB.d.exams[r.examKey];
+    if (!ex) { toast('الاختبار غير موجود', 'err'); return; }
+    if (!r.answers) r.answers = {};
+    if (letter) r.answers[q] = letter;
+    else delete r.answers[q];
+    const ev = Grade.evaluate(ex, r.answers);
+    r.score = ev.score; r.total = ev.total; r.pct = ev.pct;
+    r.correct = ev.correct; r.wrong = ev.wrong; r.blank = ev.blank; r.perQ = ev.perQ;
+    if (!r.detail) r.detail = {};
+    if (!r.detail[q]) r.detail[q] = {};
+    r.detail[q].letter = letter || null;
+    r.detail[q].multi = null;
+    r.detail[q].reviewed = true;
+    r.detail[q].manual = true;
+    DB.addResult(r);
+    this.renderManafisoun();
+    this.manafisounReview();
+    toast('تم تصحيح السؤال ' + q + ' يدوياً', 'ok');
   },
 
   /* يحمّل قالب الرصد الأصلي ويملؤه بالنتائج، ثم يعيد Buffer للتنزيل */
