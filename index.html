@@ -1410,6 +1410,7 @@ tbody tr:hover td{background:#f8fbff}
 
         <div class="card pad-0">
           <div class="card-h"><h3><svg class="ic"><use href="#i-users"/></svg> جدول النتائج</h3><span class="sp"></span>
+            <button class="btn btn-soft btn-sm" id="resReviewBtn" style="display:none" onclick="App.mnfReviewFromResults()"><svg class="ic"><use href="#i-eye"/></svg> مراجعة الحالات <span class="badge" id="resReviewCount">0</span></button>
             <button class="btn btn-green btn-sm" onclick="App.exportExcel()"><svg class="ic"><use href="#i-download"/></svg> Excel</button>
             <button class="btn btn-ghost btn-sm" onclick="App.exportCSV()"><svg class="ic"><use href="#i-download"/></svg> CSV</button>
             <button class="btn btn-ghost btn-sm" onclick="App.exportWord()"><svg class="ic"><use href="#i-file"/></svg> Word</button>
@@ -4597,6 +4598,12 @@ Object.assign(App, {
     const tb = $('resultsBody');
     const rc = $('resultsCount');
     if (rc) rc.textContent = list.length + ' نتيجة';
+    const rv = $('resReviewBtn');
+    if (rv) {
+      const show = cur.subjectId === 'manafisoun';
+      rv.style.display = show ? '' : 'none';
+      if (show && $('resReviewCount')) $('resReviewCount').textContent = this.mnfReviewCases(list).length;
+    }
     if (!tb) return;
 
     if (!list.length) {
@@ -5826,8 +5833,8 @@ Object.assign(App, {
     }).join('');
   },
 
-  mnfReviewCases() {
-    const list = this.mnfResults();
+  mnfReviewCases(list) {
+    list = list || this.mnfResults();
     const cases = [];
     const defThr = Number(DB.d.settings.threshold) || 145;
     list.forEach((r) => {
@@ -5855,6 +5862,13 @@ Object.assign(App, {
       }
     });
     return cases;
+  },
+
+  mnfReviewFromResults() {
+    const cur = this.currentResults();
+    this.state.manafisoun.grade = cur.gradeKey;
+    this.state.manafisoun.section = cur.section || '';
+    this.manafisounReview();
   },
 
   manafisounReview() {
