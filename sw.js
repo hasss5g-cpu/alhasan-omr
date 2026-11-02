@@ -1,4 +1,4 @@
-const VERSION = '3.0.0-202611021602';
+const VERSION = '3.0.0-202611021615';
 const CACHE = 'omr-pro-' + VERSION;
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './lib/xlsx.full.min.js', './lib/zxing.min.js', './lib/pdf.min.js', './lib/pdf.worker.min.js', './lib/exceljs.min.js', './lib/manafisoun-template.xlsx'];
 self.addEventListener('install', (e) => {

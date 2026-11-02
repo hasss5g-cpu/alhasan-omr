@@ -6202,7 +6202,7 @@ body{margin:0;background:#e9eff6;color:#0d2137;font-family:Tahoma,"Segoe UI",san
     const body = '<iframe id="mnfReportFrame" style="width:100%;height:68vh;border:1px solid #d9e3ef;border-radius:10px;background:#fff"></iframe>';
     const foot = '<button class="btn btn-ghost" onclick="App.closeModal()">إغلاق</button><span class="sp"></span>' +
       '<button class="btn btn-soft" onclick="App.downloadMnfAnalysis()"><svg class="ic"><use href="#i-download"/></svg> تنزيل HTML</button>' +
-      '<button class="btn btn-primary" onclick="App.printMnfAnalysis()"><svg class="ic"><use href="#i-printer"/></svg> طباعة / حفظ PDF (4 صفحات)</button>';
+      '<button class="btn btn-primary" onclick="App.printMnfAnalysis()"><svg class="ic"><use href="#i-printer"/></svg> طباعة / حفظ PDF (8 صفحات)</button>';
     this.modal('التحليل الشامل — مبادرة منافسون', body, foot, true);
     const f = $('mnfReportFrame');
     if (f) f.srcdoc = html;
@@ -6502,6 +6502,239 @@ body{margin:0;background:#e9eff6;color:#0d2137;font-family:Tahoma,"Segoe UI",san
     } catch (e) {
       toast(e.message || 'تعذّر تصدير الرصد', 'err');
     }
+  }
+});
+
+/* ================= 67-analysis.js ================= */
+/* =====================================================================
+ * 67 — التحليل الشامل (8 صفحات): غلاف + ملخص + تحليل وخطة لكل مادة
+ * ===================================================================== */
+
+Object.assign(App, {
+  buildMnfAnalysisHTML() {
+    const d = this.mnfAnalysisData();
+    if (!d) return '';
+
+    const esc2 = (v) => esc(v == null ? '' : v);
+    const pct = (v) => nfmt(v, 1) + '%';
+    const logo = (typeof MANAFISOUN_LOGO !== 'undefined' && MANAFISOUN_LOGO) ? MANAFISOUN_LOGO : 'icons/manafisoun-logo.png';
+
+    const css = `
+@page{size:A4;margin:9mm}
+*{box-sizing:border-box}
+body{margin:0;background:#e9eff6;color:#0d2137;font-family:Tahoma,"Segoe UI",sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rpt-page{width:192mm;min-height:279mm;margin:0 auto 7mm;background:#fff;padding:8mm 8mm 10mm;position:relative;box-shadow:0 2px 14px rgba(12,49,87,.12);page-break-after:always;overflow:hidden}
+.rpt-page:last-child{page-break-after:auto}
+.rpt-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #0c3157;padding-bottom:3mm;margin-bottom:3mm}
+.rpt-kicker{font-size:7.5px;color:#6b7f95;font-weight:800}
+.rpt-head h1{font-size:18px;margin:1px 0;color:#0c3157;font-weight:900}
+.rpt-head p{margin:0;color:#5d6f86;font-size:9px}
+.rpt-mark{width:15mm;height:15mm;border-radius:50%;background:#0c3157;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900}
+.rpt-mark b{font-size:17px;line-height:1}.rpt-mark span{font-size:6px;opacity:.85}
+.rpt-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:2.5mm;margin-bottom:2.5mm}
+.rpt-kpi{border:1px solid #d7e1ec;border-radius:2mm;padding:2mm;background:#f7fafd;text-align:center}
+.rpt-kpi b{display:block;font-size:15px;color:#0c3157;font-weight:900;line-height:1.1}
+.rpt-kpi span{font-size:7px;color:#6b7f95}
+.rpt-grid{display:grid;grid-template-columns:1.12fr .88fr;gap:2.5mm;margin-bottom:2.5mm}
+.rpt-grid.two{grid-template-columns:1fr 1fr}
+.rpt-card{border:1px solid #d7e1ec;border-radius:2mm;padding:2.2mm;background:#fff;min-width:0}
+.rpt-card h3{font-size:9.5px;margin:0 0 1.5mm;color:#0c3157;font-weight:900}
+.rpt-tbl{max-height:118mm;overflow:hidden;width:100%}
+.rpt-tbl table{width:100%;border-collapse:collapse;font-size:7px;table-layout:fixed}
+.rpt-tbl th{background:#eef4fa;color:#0c3157;font-size:6.8px;padding:1mm .6mm;border-bottom:1px solid #cfdce9;text-align:center;font-weight:900;overflow-wrap:anywhere}
+.rpt-tbl td{padding:.85mm .6mm;border-bottom:1px solid #eef2f6;text-align:center;overflow-wrap:anywhere}
+.rpt-tbl td.name{text-align:right;font-weight:700;white-space:normal}
+.rpt-tbl tr:nth-child(even) td{background:#fafcfe}
+.rpt-tbl.split td{padding:.42mm .3mm;font-size:6.2px;line-height:1.1}
+.rpt-tbl.split th{padding:.55mm .3mm;font-size:6.1px}
+.rpt-tbl.split td.name{line-height:1.15}
+.rpt-score{display:block;font-size:5.8px;color:#6b7f95;font-weight:400}
+.rpt-level{display:inline-block;border-radius:4mm;padding:.5mm 1.6mm;font-size:6.6px;font-weight:800;background:#eef4fa;color:#1558a8}
+.rpt-level.good{background:#e7f6ee;color:#0b6b45}.rpt-level.mid{background:#fff6e5;color:#a9780f}.rpt-level.low{background:#fdecea;color:#a32d20}
+.rpt-note{font-size:8px;color:#6b7f95;margin:2mm 0 0;line-height:1.7}
+.rpt-empty{font-size:8px;color:#6b7f95;padding:3mm;text-align:center;background:#f7fafd;border-radius:2mm}
+.rpt-list{margin:0;padding-right:4mm;font-size:8px;line-height:1.9;color:#3d5268}
+.rpt-list li{margin-bottom:.6mm}
+.rpt-table-wrap{border:1px solid #d7e1ec;border-radius:2mm;overflow:hidden;margin-bottom:2.5mm}
+.rpt-table-wrap table{width:100%;border-collapse:collapse;font-size:7px;table-layout:fixed}
+.rpt-table-wrap th{background:#0c3157;color:#fff;padding:1.2mm .8mm;font-size:6.8px;text-align:center;overflow-wrap:anywhere}
+.rpt-table-wrap td{padding:.95mm .8mm;border-bottom:1px solid #eef2f6;text-align:center;overflow-wrap:anywhere}
+.rpt-table-wrap td.name{text-align:right;font-weight:700}
+.rpt-pill{display:inline-block;border-radius:4mm;padding:.5mm 1.6mm;font-size:6.6px;font-weight:800;background:#fdecea;color:#a32d20}
+.rpt-foot{position:absolute;bottom:4mm;left:8mm;right:8mm;border-top:1px solid #e1e9f1;padding-top:1.5mm;display:flex;justify-content:space-between;font-size:6.5px;color:#8296ad}
+/* الغلاف */
+.rpt-cover{background:linear-gradient(165deg,#f4f9ff 0%,#fff 48%,#eef8f3 100%);border:1.4px solid #cfdfe9;padding:12mm 12mm 10mm}
+.cover-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8mm}
+.cover-kingdom{text-align:center;font-size:8.2px;line-height:1.65;font-weight:800;color:#123;flex:1}
+.cover-kingdom b{display:block;font-size:11.5px;color:#0c3157;margin-bottom:.6mm}
+.cover-logo{width:31mm;height:auto;object-fit:contain;mix-blend-mode:multiply}
+.cover-rule{height:2px;background:linear-gradient(90deg,#0c3157,#0f7a56,#c9973f);margin:7mm 0}
+.cover-center{text-align:center;margin-top:26mm}
+.cover-kicker{display:inline-block;background:#e7f6ee;color:#0b6b45;border:1px solid #c8e8da;border-radius:10mm;padding:1.5mm 5mm;font-size:9px;font-weight:800;margin-bottom:6mm}
+.cover-center h1{font-size:30px;line-height:1.55;margin:0;color:#0c3157;font-weight:900;letter-spacing:-.2px}
+.cover-center h1 span{color:#0f7a56}
+.cover-center p{max-width:135mm;margin:6mm auto 0;color:#546a80;font-size:10.5px;line-height:2}
+.cover-school{display:grid;grid-template-columns:repeat(2,1fr);gap:3mm;max-width:140mm;margin:22mm auto 0}
+.cover-school div{border:1px solid #d7e1ec;border-radius:2mm;background:rgba(255,255,255,.8);padding:2.6mm 4mm;display:flex;justify-content:space-between;align-items:center}
+.cover-school span{font-size:8px;color:#6b7f95;font-weight:700}
+.cover-school b{font-size:10px;color:#0c3157;font-weight:900;text-align:left}
+.cover-bottom{position:absolute;bottom:12mm;left:12mm;right:12mm;display:flex;justify-content:space-between;border-top:1px solid #d7e1ec;padding-top:3mm;font-size:8px;color:#6b7f95}
+@media print{body{background:#fff}.rpt-page{box-shadow:none;margin:0;width:auto;min-height:279mm;padding:0;page-break-after:always}.rpt-page:last-child{page-break-after:auto}.rpt-tbl{max-height:none;overflow:visible}.rpt-cover{padding:12mm 12mm 10mm}}
+`;
+
+    const pageTop = (title, sub, n, kicker) =>
+      '<div class="rpt-head"><div><div class="rpt-kicker">' + esc2(kicker || 'مبادرة منافسون · تقرير تحليلي') + '</div>' +
+      '<h1>' + esc2(title) + '</h1><p>' + esc2(sub) + '</p></div><div class="rpt-mark"><b>' + n + '</b><span>من 8</span></div></div>';
+    const foot = (n) => '<div class="rpt-foot"><span>مبادرة منافسون · ' + esc2(d.g.name) + '</span>' +
+      '<span>التصحيح الآلي — الحسن المعشي · ' + esc2(d.date) + '</span><span>صفحة ' + n + ' من 8</span></div>';
+    const lvl = (v) => v >= 75 ? 'good' : v >= 60 ? 'mid' : 'low';
+
+    /* ---------------- 1: الغلاف ---------------- */
+    let pages = '<section class="rpt-page rpt-cover">' +
+      '<div class="cover-head"><div class="cover-kingdom"><b>المملكة العربية السعودية</b>' +
+        'وزارة التعليم<br>الإدارة العامة للتعليم بمنطقة مكة المكرمة<br>الشؤون التعليمية<br>إدارة أداء التعليم - قسم الإشراف التربوي</div>' +
+        '<img class="cover-logo" src="' + logo + '" alt="شعار وزارة التعليم"></div>' +
+      '<div class="cover-rule"></div>' +
+      '<div class="cover-center"><div class="cover-kicker">مبادرة منافسون · العام الدراسي 1448 هـ</div>' +
+        '<h1>تحليل نتائج مبادرة منافسون<br><span>وخطة التحسين</span></h1>' +
+        '<p>تقرير تحليلي شامل لنتائج الطلاب في المواد الثلاث، يعرض الدرجات والمهارات المفقودة والطلاب الضعاف، ويقدّم لكل مادة خطة تحسين وبرنامجاً علاجياً مستقلاً.</p>' +
+      '</div>' +
+      '<div class="cover-school"><div><span>المدرسة</span><b>' + esc2(d.school) + '</b></div>' +
+        '<div><span>الصف</span><b>' + esc2(d.g.name) + '</b></div>' +
+        '<div><span>الفصل</span><b>' + esc2(d.section) + '</b></div>' +
+        '<div><span>عدد الطلاب</span><b>' + d.list.length + '</b></div></div>' +
+      '<div class="cover-bottom"><span>إعداد: إدارة أداء التعليم - قسم الإشراف التربوي</span><span>' + esc2(d.date) + '</span></div>' +
+      '</section>';
+
+    /* ---------------- 2: التحليل المختصر ---------------- */
+    const subjRows = d.subjects.map((s) => '<tr><td class="name">' + esc2(s.label) + '</td><td><b>' + nfmt(s.avg, 1) + '</b> / 10</td><td>' +
+      pct(s.passPct) + '</td><td>' + s.weak + '</td><td>' + s.missing.length + '</td><td>' + nfmt(s.avgPct, 1) + '%</td></tr>').join('');
+    const subjBars = this.mnfBars(d.subjects.map((s) => ({ label: s.label, value: Math.round(s.avg * 10) / 10, text: nfmt(s.avg, 1), color: s.color })), { h: 120, max: 10, showValue: true });
+    const totalDist = [0, 0, 0, 0, 0, 0];
+    d.totals.forEach((v) => { totalDist[v <= 5 ? 0 : v <= 10 ? 1 : v <= 15 ? 2 : v <= 20 ? 3 : v <= 25 ? 4 : 5]++; });
+    const totalBars = this.mnfBars(['0–5', '6–10', '11–15', '16–20', '21–25', '26–30'].map((label, i) => ({ label: label, value: totalDist[i], color: i < 2 ? '#b3261e' : i < 4 ? '#c9973f' : '#0f7a56' })), { h: 120, showValue: true });
+    const topPriorities = d.priorities.slice(0, 6).map((p, i) => '<tr><td>' + (i + 1) + '</td><td class="name">' + esc2(p.skill) + '</td><td>' + esc2(p.subject) + '</td><td>' + pct(p.pct) + '</td><td>' + p.missing + '</td></tr>').join('');
+    const weakSummary = d.weakAll.slice(0, 8).map((x) => '<tr><td class="name">' + esc2(x.r.studentName || '—') + '</td><td><b>' + x.sc.total + '</b> / 30</td><td>' + (x.weakSubjects.length ? esc2(x.weakSubjects.join('، ')) : '—') + '</td></tr>').join('');
+    pages += '<section class="rpt-page">' + pageTop('تحليل مختصر لنتائج المواد الثلاث', d.g.name + ' · ' + d.section + ' · ' + d.school, 2) +
+      '<div class="rpt-kpis"><div class="rpt-kpi"><b>' + nfmt(d.overall.avg, 1) + '</b><span>متوسط المجموع /30</span></div>' +
+        '<div class="rpt-kpi"><b>' + pct(d.overall.passPct) + '</b><span>نسبة المتقنين</span></div>' +
+        '<div class="rpt-kpi"><b>' + d.overall.weak + '</b><span>طلاب يحتاجون دعماً</span></div>' +
+        '<div class="rpt-kpi"><b>' + d.priorities.length + '</b><span>مهارات ذات أولوية</span></div></div>' +
+      '<div class="rpt-grid"><div class="rpt-card"><h3>مؤشرات المواد الثلاث</h3><div class="rpt-tbl"><table><thead><tr><th>المادة</th><th>المتوسط</th><th>المتقنون</th><th>الضعاف</th><th>مهارات مفقودة</th><th>الإتقان</th></tr></thead><tbody>' + subjRows + '</tbody></table></div></div>' +
+        '<div class="rpt-card"><h3>متوسطات المواد /10</h3>' + subjBars + '<div class="rpt-note">تُحدد المادة الأدنى متوسطاً أولوية الدعم.</div></div></div>' +
+      '<div class="rpt-grid two"><div class="rpt-card"><h3>توزيع المجموع /30</h3>' + totalBars + '</div>' +
+        '<div class="rpt-card"><h3>أعلى المهارات أولوية</h3><div class="rpt-tbl"><table><thead><tr><th>#</th><th>المهارة</th><th>المادة</th><th>الإتقان</th><th>طلاب</th></tr></thead><tbody>' + (topPriorities || '<tr><td colspan="5" class="rpt-empty">لا توجد مهارات دون 60%.</td></tr>') + '</tbody></table></div></div></div>' +
+      '<div class="rpt-grid two"><div class="rpt-card"><h3>طلاب يحتاجون خطة دعم</h3><div class="rpt-tbl"><table><thead><tr><th>الطالب</th><th>المجموع</th><th>المواد الضعيفة</th></tr></thead><tbody>' + (weakSummary || '<tr><td colspan="3" class="rpt-empty">لا يوجد طلاب دون 18/30.</td></tr>') + '</tbody></table></div></div>' +
+        '<div class="rpt-card"><h3>خلاصة سريعة</h3><div class="rpt-note" style="font-size:8.2px;line-height:1.9">' +
+          'النتيجة العامة: متوسط <b>' + nfmt(d.overall.avg, 1) + '/30</b>، ونسبة المتقنين <b>' + pct(d.overall.passPct) + '</b>. ' +
+          'أعلى مادة متوسطاً: <b>' + esc2(d.subjects.slice().sort((a, b) => b.avg - a.avg)[0].label) + '</b>، ' +
+          'وأدنى مادة: <b>' + esc2(d.subjects.slice().sort((a, b) => a.avg - b.avg)[0].label) + '</b>. ' +
+          'توجد <b>' + d.priorities.length + '</b> مهارة تحتاج تدخلاً، و<b>' + d.overall.weak + '</b> طالباً يحتاج خطة دعم. ' +
+          'تتضمن الصفحات التالية تحليلاً وخطة مستقلة لكل مادة.' +
+        '</div></div></div>' +
+      '<div class="rpt-card"><h3>توصيات عامة على مستوى المدرسة</h3><ul class="rpt-list">' +
+        '<li>البدء بالمادة الأدنى متوسطاً (<b>' + esc2(d.subjects.slice().sort((a, b) => a.avg - b.avg)[0].label) + '</b>) في البرنامج العلاجي، مع تدريب متقاطع على المهارات المشتركة.</li>' +
+        '<li>تخصيص حصة أسبوعية لكل مادة لمتابعة الطلاب الضعاف، وتوثيق التقدم في ملف الطالب.</li>' +
+        '<li>عقد اختبار تشخيصي موحد بعد أسبوعين، ثم مقارنة النتائج بخط الأساس ورفع تقرير لقائد المدرسة.</li>' +
+      '</ul></div>' + foot(2) + '</section>';
+
+    /* ---------------- 3–8: تحليل + خطة لكل مادة ---------------- */
+    d.subjects.forEach((s, si) => {
+      const an = 3 + si * 2, pl = an + 1;
+      const split = d.list.length > 15;
+      let rows = '';
+      if (split) {
+        for (let i = 0; i < d.list.length; i += 2) {
+          const cells = [d.list[i], d.list[i + 1]].map((r, k) => {
+            if (!r) return '<td></td><td></td><td></td>';
+            const sc = this.mnfScores(r)[s.key];
+            return '<td>' + (i + k + 1) + '</td><td class="name">' + esc2(r.studentName || '—') + '</td><td><b>' + sc + '</b><span class="rpt-score">' + nfmt(sc * 10, 1) + '%</span></td>';
+          }).join('');
+          rows += '<tr>' + cells + '</tr>';
+        }
+      } else {
+        rows = d.list.map((r, i) => {
+          const sc = this.mnfScores(r)[s.key], p = sc * 10;
+          return '<tr><td>' + (i + 1) + '</td><td class="name">' + esc2(r.studentName || '—') + '</td><td><b>' + sc + '</b> / 10</td><td>' + pct(p) + '</td><td><span class="rpt-level ' + lvl(p) + '">' + esc2(Grade.rank(p)) + '</span></td></tr>';
+        }).join('');
+      }
+      const tableHead = split ? '<th>#</th><th>الطالب</th><th>الدرجة</th><th>#</th><th>الطالب</th><th>الدرجة</th>' : '<th>#</th><th>اسم الطالب</th><th>الدرجة</th><th>النسبة</th><th>التقدير</th>';
+      const dist = this.mnfBars(['0–2', '3–4', '5–6', '7–8', '9–10'].map((label, i) => ({ label: label, value: s.dist[i], color: i < 2 ? '#b3261e' : i === 2 ? '#c9973f' : s.color })), { h: 115, showValue: true });
+      const qbars = this.mnfBars(s.perQ.map((x) => ({ label: 'س' + x.q, value: x.pct, text: x.pct + '%', color: x.pct < 60 ? '#b3261e' : s.color })), { h: 115, max: 100, showValue: true });
+      const missRows = s.missing.length ? s.missing.slice(0, 7).map((m) => '<tr><td class="name">' + esc2(m.skill) + '</td><td>' + pct(m.pct) + '</td><td>' + m.missing + '</td></tr>').join('') : '';
+      const weakRows = s.weakStudents.length ? s.weakStudents.slice(0, 8).map((x) => '<tr><td class="name">' + esc2(x.r.studentName || '—') + '</td><td><b>' + x.score + '</b> / 10</td><td>' + pct(x.score * 10) + '</td></tr>').join('') : '';
+      const top = d.list.slice().sort((a, b) => this.mnfScores(b)[s.key] - this.mnfScores(a)[s.key]).filter((r) => this.mnfScores(r)[s.key] >= 5).slice(0, 5);
+      const topRows = top.length ? top.map((r, i) => '<tr><td>' + (i + 1) + '</td><td class="name">' + esc2(r.studentName || '—') + '</td><td><b>' + this.mnfScores(r)[s.key] + '</b> / 10</td></tr>').join('') : '<tr><td colspan="3" class="rpt-empty">لا يوجد طلاب بمستوى متقن (≥5/10).</td></tr>';
+
+      pages += '<section class="rpt-page">' + pageTop('تحليل نتائج ' + s.label, d.g.name + ' · ' + d.section + ' · ' + d.school, an) +
+        '<div class="rpt-kpis"><div class="rpt-kpi"><b>' + nfmt(s.avg, 1) + '</b><span>متوسط الدرجة /10</span></div>' +
+          '<div class="rpt-kpi"><b>' + pct(s.passPct) + '</b><span>نسبة المتقنين (≥5)</span></div>' +
+          '<div class="rpt-kpi"><b>' + s.weak + '</b><span>طلاب دون المتقن</span></div>' +
+          '<div class="rpt-kpi"><b>' + s.max + '</b><span>أعلى درجة</span></div></div>' +
+        '<div class="rpt-grid"><div class="rpt-card"><h3>درجات الطلاب — ' + esc2(s.label) + '</h3><div class="rpt-tbl' + (split ? ' split' : '') + '"><table><thead><tr>' + tableHead + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
+          '<div class="rpt-card"><h3>توزيع الدرجات</h3>' + dist + '<div class="rpt-note">كل عمود يمثل عدد الطلاب داخل فئة الدرجات.</div></div></div>' +
+        '<div class="rpt-grid two"><div class="rpt-card"><h3>المهارات المفقودة (إتقان أقل من 60%)</h3>' +
+          (s.missing.length ? '<div class="rpt-tbl"><table><thead><tr><th>المهارة</th><th>الإتقان</th><th>طلاب</th></tr></thead><tbody>' + missRows + '</tbody></table></div>' : '<div class="rpt-empty">لا توجد مهارات دون 60%.</div>') + '</div>' +
+          '<div class="rpt-card"><h3>الطلاب الضعاف (أقل من 5/10)</h3>' +
+          (s.weakStudents.length ? '<div class="rpt-tbl"><table><thead><tr><th>الطالب</th><th>الدرجة</th><th>النسبة</th></tr></thead><tbody>' + weakRows + '</tbody></table></div>' : '<div class="rpt-empty">لا يوجد طلاب دون 5/10.</div>') + '</div></div>' +
+        '<div class="rpt-card"><h3>نسبة الإتقان لكل سؤال</h3>' + qbars + '</div>' +
+        '<div class="rpt-card"><h3>أبرز المتفوقين في ' + esc2(s.label) + '</h3><div class="rpt-tbl"><table><thead><tr><th>#</th><th>الطالب</th><th>الدرجة</th></tr></thead><tbody>' + topRows + '</tbody></table></div></div>' +
+        foot(an) + '</section>';
+
+      /* خطة المادة */
+      const priorities = s.missing.slice(0, 8);
+      const planRows = priorities.length ? priorities.map((m, i) => {
+        const action = m.pct < 40 ? 'إعادة تدريس المهارة في مجموعة صغيرة' : 'تدريب موجه + أوراق عمل قصيرة';
+        const time = m.pct < 40 ? '3 أسابيع' : 'أسبوعان';
+        return '<tr><td>' + (i + 1) + '</td><td class="name">' + esc2(m.skill) + '</td><td>' + pct(m.pct) + '</td><td>70%</td><td>' + esc2(action) + '</td><td>' + time + '</td><td>اختبار قصير ≥ 70%</td></tr>';
+      }).join('') : '';
+      const planBars = this.mnfBars((priorities.length ? priorities : s.perQ.slice(0, 6)).map((m) => ({ label: 'س' + m.q, value: m.missing, text: m.missing, color: m.pct < 60 ? '#b3261e' : s.color })), { h: 110, max: d.list.length, showValue: true });
+      const weakPlan = s.weakStudents.slice(0, 12).map((x) => '<tr><td class="name">' + esc2(x.r.studentName || '—') + '</td><td><b>' + x.score + '</b> / 10</td><td>' + pct(x.score * 10) + '</td><td><span class="rpt-pill">' + (x.score < 3 ? 'علاجي مكثف' : 'دعم ومتابعة') + '</span></td></tr>').join('');
+      const moreWeak = s.weakStudents.length > 12 ? '<div class="rpt-note">+ ' + (s.weakStudents.length - 12) + ' طالباً آخر في كشف المتابعة.</div>' : '';
+      const progRows = [
+        ['1', 'التشخيص', 'اختبار تشخيصي قصير لتحديد الفجوات', 'معلم المادة', 'نتيجة تشخيصية'],
+        ['2', 'إعادة التدريس', 'شرح المهارات المستهدفة بأمثلة محسوسة', 'معلم المادة', 'حضور وفهم'],
+        ['3', 'التدريب الموجه', 'أوراق عمل ومجموعات صغيرة', 'معلم المادة والمرشد', 'أوراق مكتملة'],
+        ['4', 'التقويم', 'اختبار قصير على المهارات', 'معلم المادة', 'إتقان ≥ 70%'],
+        ['5', 'المتابعة', 'تقرير أثر + متابعة أسبوعية', 'قائد المدرسة', 'تحسن مقاس']
+      ].map((r) => '<tr><td>' + r[0] + '</td><td class="name">' + esc2(r[1]) + '</td><td>' + esc2(r[2]) + '</td><td>' + esc2(r[3]) + '</td><td>' + esc2(r[4]) + '</td></tr>').join('');
+      const targetAvg = Math.min(10, Math.round((s.avg + 1.5) * 10) / 10);
+      const effectRows = [
+        ['متوسط المادة /10', nfmt(s.avg, 1), nfmt(targetAvg, 1), 'سجل الدرجات'],
+        ['نسبة الإتقان', pct(s.avgPct), '85%', 'اختبار قصير'],
+        ['الطلاب دون 5/10', String(s.weak), '0', 'كشف المتابعة'],
+        ['مهارات دون 60%', String(s.missing.length), String(Math.max(0, s.missing.length - 2)), 'تحليل الأسئلة']
+      ].map((r) => '<tr><td class="name">' + esc2(r[0]) + '</td><td>' + esc2(r[1]) + '</td><td><b>' + esc2(r[2]) + '</b></td><td>' + esc2(r[3]) + '</td></tr>').join('');
+      const g1 = s.scores.filter((v) => v < 3).length;
+      const g2 = s.scores.filter((v) => v >= 3 && v < 5).length;
+      const g3 = s.scores.filter((v) => v >= 5).length;
+      const groupRows = [
+        ['المجموعة العلاجية المكثفة', 'أقل من 3/10', g1, '3 حصص أسبوعياً + متابعة فردية'],
+        ['مجموعة الدعم', '3 – 4.9/10', g2, 'حصتان أسبوعياً + أوراق عمل'],
+        ['مجموعة الإتقان', '5/10 وأعلى', g3, 'إثراء ومهام تطويرية']
+      ].map((r) => '<tr><td class="name">' + esc2(r[0]) + '</td><td>' + esc2(r[1]) + '</td><td><b>' + r[2] + '</b></td><td>' + esc2(r[3]) + '</td></tr>').join('');
+
+      pages += '<section class="rpt-page">' + pageTop('خطة التحسين والبرنامج العلاجي — ' + s.label, d.g.name + ' · ' + d.section + ' · خطة مستقلة للمادة', pl) +
+        '<div class="rpt-kpis"><div class="rpt-kpi"><b>' + nfmt(s.avg, 1) + '</b><span>المتوسط الحالي /10</span></div>' +
+          '<div class="rpt-kpi"><b>' + s.weak + '</b><span>طلاب يحتاجون دعماً</span></div>' +
+          '<div class="rpt-kpi"><b>' + s.missing.length + '</b><span>مهارات مستهدفة</span></div>' +
+          '<div class="rpt-kpi"><b>70%</b><span>هدف الإتقان</span></div></div>' +
+        '<div class="rpt-grid"><div class="rpt-card"><h3>المهارات المستهدفة وأولويات التدريس</h3><div class="rpt-tbl"><table><thead><tr><th>#</th><th>المهارة</th><th>الحالي</th><th>الهدف</th><th>الإجراء</th><th>المدة</th><th>المؤشر</th></tr></thead><tbody>' + (planRows || '<tr><td colspan="7" class="rpt-empty">لا توجد مهارات دون 60%.</td></tr>') + '</tbody></table></div></div>' +
+          '<div class="rpt-card"><h3>عدد الطلاب دون الإتقان لكل مهارة</h3>' + planBars + '<div class="rpt-note">الأعمدة الحمراء مهارات دون 60% وتحتاج تدخلاً علاجياً.</div></div></div>' +
+        '<div class="rpt-table-wrap"><table><thead><tr><th>#</th><th>المرحلة</th><th>الإجراء</th><th>المسؤول</th><th>المؤشر</th></tr></thead><tbody>' + progRows + '</tbody></table></div>' +
+        '<div class="rpt-card"><h3>الطلاب المستهدفون بالبرنامج العلاجي</h3>' +
+          (weakPlan ? '<div class="rpt-tbl"><table><thead><tr><th>الطالب</th><th>الدرجة</th><th>النسبة</th><th>نوع الدعم</th></tr></thead><tbody>' + weakPlan + '</tbody></table></div>' + moreWeak : '<div class="rpt-empty">لا يوجد طلاب دون 5/10.</div>') +
+        '</div>' +
+        '<div class="rpt-card"><h3>مؤشرات قياس أثر الخطة</h3><div class="rpt-tbl"><table><thead><tr><th>المؤشر</th><th>الوضع الحالي</th><th>المستهدف</th><th>أداة القياس</th></tr></thead><tbody>' + effectRows + '</tbody></table></div></div>' +
+        '<div class="rpt-card"><h3>توزيع الطلاب على المجموعات العلاجية</h3><div class="rpt-tbl"><table><thead><tr><th>المجموعة</th><th>الفئة</th><th>العدد</th><th>الإجراء</th></tr></thead><tbody>' + groupRows + '</tbody></table></div></div>' +
+        '<div class="rpt-card"><h3>ملاحظات تنفيذية</h3><ul class="rpt-list">' +
+          '<li>تُخصص حصة أسبوعية للتدريب على المهارات المستهدفة، مع متابعة فردية للطلاب الضعاف.</li>' +
+          '<li>تُقاس فاعلية البرنامج باختبار قصير بعد أسبوعين، ويُعدّل وفق النتائج.</li>' +
+          '<li>تُوثق المتابعة في ملف الطالب، وتُعرض النتائج على قائد المدرسة.</li>' +
+        '</ul></div>' + foot(pl) + '</section>';
+    });
+
+    return '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تحليل نتائج مبادرة منافسون وخطة التحسين</title><style>' + css + '</style></head><body>' + pages + '</body></html>';
   }
 });
 
