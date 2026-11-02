@@ -1232,6 +1232,7 @@ tbody tr:hover td{background:#f8fbff}
             <button class="btn btn-primary" onclick="App.manafisounScan()"><svg class="ic"><use href="#i-camera"/></svg> تصحيح أوراق منافسون</button>
             <button class="btn btn-ghost" onclick="App.manafisounResults()"><svg class="ic"><use href="#i-chart"/></svg> عرض النتائج</button>
             <span class="sp"></span>
+            <button class="btn btn-soft" onclick="App.exportManafisounDetailedExcel()"><svg class="ic"><use href="#i-download"/></svg> تصدير Excel مفصل</button>
             <button class="btn btn-gold" onclick="App.exportManafisounExcel()"><svg class="ic"><use href="#i-download"/></svg> تصدير رصد منافسون Excel</button>
           </div>
           <div class="tbl-wrap" style="border:0;border-radius:0;max-height:420px">
@@ -5722,6 +5723,211 @@ Object.assign(App, {
 
     const out = await wb.xlsx.writeBuffer();
     return { buffer: out, count: list.length, grade: g };
+  },
+
+  async buildManafisounDetailedWorkbook() {
+    const ex = this.mnfExam(false);
+    if (!ex) throw new Error('لا يوجد اختبار منافسون — اضغط تجهيز أولاً');
+    const list = this.mnfResults().slice().sort((a, b) => String(a.studentName || '').localeCompare(String(b.studentName || ''), 'ar'));
+    if (!list.length) throw new Error('لا توجد نتائج مصححة — صحّح الأوراق أولاً');
+    await Lib.exceljs();
+
+    const labels = this.mnfLabels();
+    const g = gradeByKey(this.state.manafisoun.grade);
+    const school = DB.d.school.name || '';
+    const section = this.state.manafisoun.section || 'كل الفصول';
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'التصحيح الآلي — الحسن المعشي';
+    wb.lastModifiedBy = 'التصحيح الآلي';
+    wb.created = new Date();
+
+    const NAVY = 'FF0C3157', BLUE = 'FF1558A8', GREEN = 'FF0F7A56', GOLD = 'FFC9973F';
+    const LIGHT = 'FFF4F7FB', LINE = 'FFD9E3EF';
+    const thin = { style: 'thin', color: { argb: LINE } };
+    const allBorder = { top: thin, left: thin, bottom: thin, right: thin };
+    const paint = (cell, o) => {
+      o = o || {};
+      if (o.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: o.fill } };
+      cell.font = { name: 'Tahoma', size: o.size || 10, bold: !!o.bold, color: { argb: o.color || 'FF0D2137' } };
+      cell.alignment = { horizontal: o.align || 'center', vertical: 'middle', wrapText: o.wrap !== false };
+      if (o.border !== false) cell.border = allBorder;
+    };
+
+    /* ---------------- ورقة تفصيل الدرجات ---------------- */
+    const ws = wb.addWorksheet('تفصيل الدرجات', {
+      views: [{ rightToLeft: true, state: 'frozen', xSplit: 4, ySplit: 5 }]
+    });
+    const widths = [6, 30, 14, 7];
+    for (let i = 0; i < 30; i++) widths.push(5);
+    widths.push(11, 11, 11, 13, 10);
+    ws.columns = widths.map((w) => ({ width: w }));
+
+    ws.mergeCells('A1:AM1');
+    ws.getCell('A1').value = 'رصد درجات مبادرة منافسون — تفصيل درجات الأسئلة';
+    paint(ws.getCell('A1'), { fill: NAVY, color: 'FFFFFFFF', size: 14, bold: true });
+    ws.getRow(1).height = 34;
+
+    ws.mergeCells('A2:AM2');
+    ws.getCell('A2').value = 'المدرسة: ' + (school || '—') + '   |   الصف: ' + g.name +
+      '   |   الفصل: ' + section + '   |   عدد الطلاب: ' + list.length + '   |   ' + dateStr();
+    paint(ws.getCell('A2'), { fill: LIGHT, size: 10, bold: true });
+    ws.getRow(2).height = 24;
+
+    const groupHeaders = [
+      ['A3', 'D3', 'بيانات الطالب', BLUE],
+      ['E3', 'N3', labels[0] + ' · 10 أسئلة', GREEN],
+      ['O3', 'X3', labels[1] + ' · 10 أسئلة', GOLD],
+      ['Y3', 'AH3', labels[2] + ' · 10 أسئلة', BLUE],
+      ['AI3', 'AK3', 'مجاميع المواد', GOLD],
+      ['AL3', 'AM3', 'النتيجة', NAVY]
+    ];
+    groupHeaders.forEach(([a, b, text, color]) => {
+      ws.mergeCells(a + ':' + b);
+      ws.getCell(a).value = text;
+      paint(ws.getCell(a), { fill: color, color: 'FFFFFFFF', size: 10, bold: true });
+    });
+    ws.getRow(3).height = 24;
+
+    const heads = ['م', 'اسم الطالب', 'رقم السجل', 'الفصل'];
+    for (let i = 1; i <= 30; i++) heads.push('س' + i);
+    heads.push('مجموع ' + labels[0] + ' /10', 'مجموع ' + labels[1] + ' /10', 'مجموع ' + labels[2] + ' /10', 'المجموع /30', 'النسبة %');
+    const hr = ws.getRow(4);
+    heads.forEach((h, i) => {
+      hr.getCell(i + 1).value = h;
+      paint(hr.getCell(i + 1), { fill: NAVY, color: 'FFFFFFFF', size: 9, bold: true });
+    });
+    hr.height = 34;
+
+    ws.mergeCells('A5:D5');
+    ws.getCell('A5').value = 'الإجابة الصحيحة (درجة كل سؤال = 1)';
+    paint(ws.getCell('A5'), { fill: LIGHT, color: BLUE, size: 9, bold: true });
+    for (let q = 1; q <= 30; q++) {
+      const c = ws.getRow(5).getCell(4 + q);
+      c.value = ex.answerKey[q] || '—';
+      paint(c, { fill: LIGHT, color: BLUE, size: 9, bold: true });
+    }
+    for (let c = 35; c <= 39; c++) paint(ws.getRow(5).getCell(c), { fill: LIGHT });
+    ws.getRow(5).height = 24;
+
+    list.forEach((r, i) => {
+      const sc = this.mnfScores(r);
+      const row = ws.getRow(6 + i);
+      row.getCell(1).value = i + 1;
+      row.getCell(2).value = r.studentName || '';
+      row.getCell(3).value = r.studentId || '';
+      row.getCell(4).value = r.section || '';
+      paint(row.getCell(1), { size: 9 });
+      paint(row.getCell(2), { size: 10, align: 'right' });
+      paint(row.getCell(3), { size: 9 });
+      paint(row.getCell(4), { size: 9 });
+      for (let q = 1; q <= 30; q++) {
+        const cell = row.getCell(4 + q);
+        const v = (r.perQ && Number(r.perQ[q]) === 1) ? 1 : 0;
+        cell.value = v;
+        paint(cell, {
+          fill: v ? 'FFE7F6EE' : 'FFFDEBEA',
+          color: v ? 'FF0B6B45' : 'FFA32D20',
+          size: 9, bold: true
+        });
+        cell.numFmt = '0';
+      }
+      const totals = [sc.math, sc.arabic, sc.science, sc.total];
+      totals.forEach((v, k) => {
+        const cell = row.getCell(35 + k);
+        cell.value = v;
+        paint(cell, { fill: LIGHT, color: NAVY, size: 10, bold: true });
+        cell.numFmt = '0';
+      });
+      const pc = row.getCell(39);
+      pc.value = sc.pct / 100;
+      paint(pc, { fill: LIGHT, color: NAVY, size: 10, bold: true });
+      pc.numFmt = '0.0%';
+      row.height = 22;
+    });
+
+    const footRow = 6 + list.length + 1;
+    ws.mergeCells('A' + footRow + ':AM' + footRow);
+    ws.getCell('A' + footRow).value = 'تم إنشاء هذا الملف آلياً بواسطة التصحيح الآلي — الحسن المعشي · ' +
+      'كل خلية في أعمدة س1–س30 تمثل درجة السؤال (1 = صحيح، 0 = خطأ).';
+    paint(ws.getCell('A' + footRow), { fill: LIGHT, size: 9, color: 'FF5D6F86', border: false });
+    ws.autoFilter = { from: 'A4', to: 'AM4' };
+    ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+    ws.headerFooter.oddFooter = '&Cصفحة &P من &N';
+
+    /* ---------------- ورقة المفتاح ---------------- */
+    const ks = wb.addWorksheet('المفتاح', { views: [{ rightToLeft: true }] });
+    ks.columns = [{ width: 7 }, { width: 22 }, { width: 16 }, { width: 9 }];
+    ks.mergeCells('A1:D1');
+    ks.getCell('A1').value = 'مفتاح إجابة مبادرة منافسون — ' + g.name;
+    paint(ks.getCell('A1'), { fill: NAVY, color: 'FFFFFFFF', size: 13, bold: true });
+    ks.getRow(1).height = 30;
+    ['م', 'المادة', 'الإجابة الصحيحة', 'الدرجة'].forEach((h, i) => {
+      const c = ks.getRow(2).getCell(i + 1);
+      c.value = h;
+      paint(c, { fill: BLUE, color: 'FFFFFFFF', size: 10, bold: true });
+    });
+    for (let q = 1; q <= 30; q++) {
+      const row = ks.getRow(2 + q);
+      const subject = q <= 10 ? labels[0] : q <= 20 ? labels[1] : labels[2];
+      row.getCell(1).value = q;
+      row.getCell(2).value = subject;
+      row.getCell(3).value = ex.answerKey[q] || '—';
+      row.getCell(4).value = 1;
+      for (let c = 1; c <= 4; c++) paint(row.getCell(c), { size: 10, bold: c === 3 });
+    }
+
+    /* ---------------- ورقة الملخص ---------------- */
+    const scores = list.map((r) => this.mnfScores(r));
+    const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+    const avgMath = avg(scores.map((s) => s.math));
+    const avgAr = avg(scores.map((s) => s.arabic));
+    const avgSci = avg(scores.map((s) => s.science));
+    const avgTot = avg(scores.map((s) => s.total));
+    const success = scores.length ? scores.filter((s) => s.pct >= 60).length / scores.length * 100 : 0;
+    const maxTot = scores.length ? Math.max.apply(null, scores.map((s) => s.total)) : 0;
+    const minTot = scores.length ? Math.min.apply(null, scores.map((s) => s.total)) : 0;
+
+    const sm = wb.addWorksheet('ملخص', { views: [{ rightToLeft: true }] });
+    sm.columns = [{ width: 32 }, { width: 20 }];
+    sm.mergeCells('A1:B1');
+    sm.getCell('A1').value = 'ملخص رصد مبادرة منافسون — ' + g.name;
+    paint(sm.getCell('A1'), { fill: NAVY, color: 'FFFFFFFF', size: 13, bold: true });
+    sm.getRow(1).height = 30;
+    const rows = [
+      ['المدرسة', school || '—'],
+      ['الصف', g.name],
+      ['الفصل', section],
+      ['عدد الطلاب', list.length],
+      ['متوسط ' + labels[0] + ' /10', nfmt(avgMath, 1)],
+      ['متوسط ' + labels[1] + ' /10', nfmt(avgAr, 1)],
+      ['متوسط ' + labels[2] + ' /10', nfmt(avgSci, 1)],
+      ['متوسط المجموع /30', nfmt(avgTot, 1)],
+      ['نسبة النجاح (≥60%)', nfmt(success, 1) + '%'],
+      ['أعلى مجموع', maxTot],
+      ['أدنى مجموع', minTot]
+    ];
+    rows.forEach((r, i) => {
+      const row = sm.getRow(2 + i);
+      row.getCell(1).value = r[0];
+      row.getCell(2).value = r[1];
+      paint(row.getCell(1), { fill: i % 2 ? 'FFFFFFFF' : LIGHT, size: 10, bold: true, align: 'right' });
+      paint(row.getCell(2), { fill: i % 2 ? 'FFFFFFFF' : LIGHT, size: 10, align: 'center' });
+      row.height = 22;
+    });
+
+    const out = await wb.xlsx.writeBuffer();
+    return { buffer: out, count: list.length, grade: g };
+  },
+
+  async exportManafisounDetailedExcel() {
+    try {
+      const out = await this.buildManafisounDetailedWorkbook();
+      const blob = new Blob([out.buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadBlob(blob, 'رصد_منافسون_مفصل_' + out.grade.short + '.xlsx');
+      toast('تم تصدير ملف Excel مفصل (' + out.count + ' طالب)', 'ok');
+    } catch (e) {
+      toast(e.message || 'تعذّر تصدير الملف المفصل', 'err');
+    }
   },
 
   async exportManafisounExcel() {
