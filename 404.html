@@ -6053,6 +6053,10 @@ body{margin:0;background:#e9eff6;color:#0d2137;font-family:Tahoma,"Segoe UI",san
 .rpt-tbl th{background:#eef4fa;color:#0c3157;font-size:6.8px;padding:1mm .6mm;border-bottom:1px solid #cfdce9;text-align:center;font-weight:900;overflow-wrap:anywhere}
 .rpt-tbl td{padding:.85mm .6mm;border-bottom:1px solid #eef2f6;text-align:center;overflow-wrap:anywhere}
 .rpt-tbl td.name{text-align:right;font-weight:700;white-space:normal}
+.rpt-score{display:block;font-size:5.8px;color:#6b7f95;font-weight:400}
+.rpt-tbl.split td{padding:.42mm .3mm;font-size:6.2px;line-height:1.1}
+.rpt-tbl.split th{padding:.55mm .3mm;font-size:6.1px}
+.rpt-tbl.split td.name{line-height:1.15}
 .rpt-list{margin:0;padding-right:4mm;font-size:8px;line-height:1.9;color:#3d5268}
 .rpt-list li{margin-bottom:.6mm}
 .rpt-tbl tr:nth-child(even) td{background:#fafcfe}
@@ -6076,13 +6080,28 @@ body{margin:0;background:#e9eff6;color:#0d2137;font-family:Tahoma,"Segoe UI",san
 
     let pages = '';
     d.subjects.forEach((s, si) => {
-      const rows = d.list.map((r, i) => {
-        const sc = this.mnfScores(r)[s.key];
-        const pct = sc / 10 * 100;
-        return '<tr><td>' + (i + 1) + '</td><td class="name">' + esc(r.studentName || '—') + '</td>' +
-          '<td><b>' + sc + '</b> / 10</td><td>' + nfmt(pct, 1) + '%</td>' +
-          '<td><span class="rpt-level ' + levelCls(pct) + '">' + esc(levelTxt(pct)) + '</span></td></tr>';
-      }).join('');
+      const split = d.list.length > 15;
+      let rows = '';
+      if (split) {
+        for (let i = 0; i < d.list.length; i += 2) {
+          const cells = [d.list[i], d.list[i + 1]].map((r, k) => {
+            if (!r) return '<td></td><td></td><td></td>';
+            const sc = this.mnfScores(r)[s.key];
+            const pct = sc / 10 * 100;
+            return '<td>' + (i + k + 1) + '</td><td class="name">' + esc(r.studentName || '—') + '</td>' +
+              '<td><b>' + sc + '</b><span class="rpt-score">' + nfmt(pct, 1) + '%</span></td>';
+          }).join('');
+          rows += '<tr>' + cells + '</tr>';
+        }
+      } else {
+        rows = d.list.map((r, i) => {
+          const sc = this.mnfScores(r)[s.key];
+          const pct = sc / 10 * 100;
+          return '<tr><td>' + (i + 1) + '</td><td class="name">' + esc(r.studentName || '—') + '</td>' +
+            '<td><b>' + sc + '</b> / 10</td><td>' + nfmt(pct, 1) + '%</td>' +
+            '<td><span class="rpt-level ' + levelCls(pct) + '">' + esc(levelTxt(pct)) + '</span></td></tr>';
+        }).join('');
+      }
       const dist = this.mnfBars(
         ['0–2', '3–4', '5–6', '7–8', '9–10'].map((label, i) => ({ label: label, value: s.dist[i], color: i < 2 ? '#b3261e' : i === 2 ? '#c9973f' : s.color })),
         { h: 120, showValue: true }
@@ -6090,6 +6109,9 @@ body{margin:0;background:#e9eff6;color:#0d2137;font-family:Tahoma,"Segoe UI",san
       const qbars = this.mnfBars(s.perQ.map((x) => ({ label: 'س' + x.q, value: x.pct, text: x.pct + '%', color: x.pct < 60 ? '#b3261e' : s.color })), { h: 125, max: 100 });
       const missRows = s.missing.length ? s.missing.slice(0, 7).map((m) => '<tr><td class="name">' + esc(m.skill) + '</td><td>' + nfmt(m.pct, 1) + '%</td><td>' + m.missing + '</td></tr>').join('') : '';
       const weakRows = s.weakStudents.length ? s.weakStudents.slice(0, 9).map((x) => '<tr><td class="name">' + esc(x.r.studentName || '—') + '</td><td><b>' + x.score + '</b> / 10</td><td>' + nfmt(x.score * 10, 1) + '%</td></tr>').join('') : '';
+      const tableHead = split
+        ? '<th>#</th><th>الطالب</th><th>الدرجة</th><th>#</th><th>الطالب</th><th>الدرجة</th>'
+        : '<th>#</th><th>اسم الطالب</th><th>الدرجة</th><th>النسبة</th><th>التقدير</th>';
       const top = d.list.slice().sort((a, b) => this.mnfScores(b)[s.key] - this.mnfScores(a)[s.key])
         .filter((r) => this.mnfScores(r)[s.key] >= 5).slice(0, 5);
       const topRows = top.length ? top.map((r, i) => '<tr><td>' + (i + 1) + '</td><td class="name">' + esc(r.studentName || '—') + '</td><td><b>' + this.mnfScores(r)[s.key] + '</b> / 10</td></tr>').join('') :
@@ -6111,7 +6133,7 @@ body{margin:0;background:#e9eff6;color:#0d2137;font-family:Tahoma,"Segoe UI",san
           '<div class="rpt-kpi"><b>' + s.weak + '</b><span>طلاب دون المتقن</span></div>' +
           '<div class="rpt-kpi"><b>' + s.max + '</b><span>أعلى درجة</span></div>' +
         '</div>' +
-        '<div class="rpt-grid"><div class="rpt-card"><h3>درجات الطلاب — ' + esc(s.label) + '</h3><div class="rpt-tbl"><table><thead><tr><th>#</th><th>اسم الطالب</th><th>الدرجة</th><th>النسبة</th><th>التقدير</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
+        '<div class="rpt-grid"><div class="rpt-card"><h3>درجات الطلاب — ' + esc(s.label) + '</h3><div class="rpt-tbl' + (split ? ' split' : '') + '"><table><thead><tr>' + tableHead + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
         '<div class="rpt-card"><h3>توزيع الدرجات</h3>' + dist + '<div class="rpt-note">كل عمود يمثل عدد الطلاب داخل فئة الدرجات.</div></div></div>' +
         '<div class="rpt-grid two"><div class="rpt-card"><h3>المهارات المفقودة (إتقان أقل من 60%)</h3>' +
           (s.missing.length ? '<div class="rpt-tbl"><table><thead><tr><th>المهارة</th><th>الإتقان</th><th>طلاب</th></tr></thead><tbody>' + missRows + '</tbody></table></div>' : '<div class="rpt-empty">لا توجد مهارات دون 60% — إتقان جيد.</div>') +
@@ -6121,10 +6143,10 @@ body{margin:0;background:#e9eff6;color:#0d2137;font-family:Tahoma,"Segoe UI",san
         '<div class="rpt-card"><h3>نسبة الإتقان لكل سؤال</h3>' + qbars + '</div>' +
         '<div class="rpt-grid two"><div class="rpt-card"><h3>أبرز المتفوقين في ' + esc(s.label) + '</h3><div class="rpt-tbl"><table><thead><tr><th>#</th><th>الطالب</th><th>الدرجة</th></tr></thead><tbody>' + topRows + '</tbody></table></div></div>' +
         '<div class="rpt-card"><h3>توصيات المادة</h3><ul class="rpt-list">' + recs.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div></div>' +
-        '<div class="rpt-card"><h3>مؤشرات إضافية</h3><div class="rpt-note" style="font-size:8.2px;line-height:1.9">' +
+        (split ? '' : '<div class="rpt-card"><h3>مؤشرات إضافية</h3><div class="rpt-note" style="font-size:8.2px;line-height:1.9">' +
           'عدد الطلاب: <b>' + d.list.length + '</b> · أعلى درجة: <b>' + s.max + '/10</b> · أدنى درجة: <b>' + s.min + '/10</b><br>' +
           'نسبة الإتقان العامة: <b>' + nfmt(s.avgPct, 1) + '%</b> · عدد المهارات دون 60%: <b>' + s.missing.length + '</b> · الطلاب دون 5/10: <b>' + s.weak + '</b>' +
-        '</div></div>' +
+        '</div></div>') +
         '<div class="rpt-foot"><span>مبادرة منافسون · ' + esc(d.g.name) + '</span><span>التصحيح الآلي — الحسن المعشي · ' + esc(d.date) + '</span><span>صفحة ' + (si + 1) + ' من 4</span></div>' +
         '</section>';
     });
