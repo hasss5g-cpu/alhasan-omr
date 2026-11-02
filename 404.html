@@ -799,6 +799,19 @@ tbody tr:hover td{background:#f8fbff}
 .mnf-st-empty{padding:18px;text-align:center;color:#8296ad;font-size:12px}
 .mnf-st-row.on{background:#eef8f2}
 .mnf-st-row.on .mnf-st-name{color:#0b6b45}
+
+/* خانة اختيار طلاب منافسون — مدمجة */
+#mnfPickerCard{padding:13px 14px}
+#mnfPickerCard .mnf-students{max-height:190px}
+#mnfPickerCard .mnf-st-row{padding:4px 8px}
+#mnfPickerCard .mnf-st-name{font-size:11.5px}
+#mnfPickerCard .mnf-st-id{font-size:9px}
+#mnfPickerCard .mnf-st-sec{font-size:8.5px;padding:1px 5px}
+#mnfPickerCard{padding:10px 12px}
+#mnfPickerCard .mnf-students{max-height:150px}
+#mnfPickerCard .mnf-st-row{padding:3px 7px}
+#mnfPickerCard .mnf-st-name{font-size:11px}
+#mnfPickerCard .hint{font-size:9px}
 </style>
 </head>
 <body>
@@ -855,7 +868,7 @@ tbody tr:hover td{background:#f8fbff}
     <div class="splash-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg></div>
     <div class="splash-kicker">منصة التصحيح الآلي</div>
     <h1>التصحيح <span class="g">الآلي</span></h1>
-    <p>الحسن المعشي · أوراق نافس · باركود · تحليل ذكي</p>
+    <p>الحسن المعشي · مبادرة منافسون · باركود · رصد ذكي</p>
     <div class="splash-bar"><i></i></div>
     <div class="splash-foot"><svg class="ic"><use href="#i-shield"/></svg> يعمل على جهازك · بياناتك محفوظة محلياً</div>
   </div>
@@ -868,14 +881,14 @@ tbody tr:hover td{background:#f8fbff}
       <div class="brand-copy"><b>التصحيح الآلي</b><span>الحسن المعشي · OMR Pro</span></div>
     </div>
 
-    <button class="side-cta" onclick="App.go('design')"><svg class="ic"><use href="#i-plus"/></svg> اختبار جديد</button>
+    <button class="side-cta" onclick="App.startNewManafisoun()"><svg class="ic"><use href="#i-plus"/></svg> بداية اختبار جديد</button>
 
     <nav class="nav" id="nav">
       <div class="nav-label">العمل اليومي</div>
       <button class="nav-item active" data-panel="dashboard"><svg class="ic"><use href="#i-grid"/></svg> لوحة التحكم</button>
       <button class="nav-item" data-panel="students"><svg class="ic"><use href="#i-users"/></svg> الطلاب <span class="pill" id="navStudents">0</span></button>
-      <button class="nav-item" data-panel="design"><svg class="ic"><use href="#i-edit"/></svg> تصميم الاختبار</button>
-      <button class="nav-item" data-panel="scan"><svg class="ic"><use href="#i-target"/></svg> التصحيح الآلي</button>
+      
+      
       <div class="nav-label">المبادرات</div>
       <button class="nav-item" data-panel="manafisoun"><svg class="ic"><use href="#i-award"/></svg> مبادرة منافسون</button>
       <div class="nav-label">المخرجات</div>
@@ -926,11 +939,10 @@ tbody tr:hover td{background:#f8fbff}
             <div class="hero-copy">
               <div class="hero-eyebrow"><span class="hero-dot"></span> منصة التصحيح الآلي <span class="hero-sep">·</span> <b id="heroDate">—</b></div>
               <h1>ورقة واحدة… ونتيجة <span>دقيقة</span></h1>
-              <p>صمّم اختبار نافس أو أي مادة، اطبع لكل طالب ورقة بباركوده الخاص، ثم صحّح بالجوال أو الماسح — والتحليل يتولّى الباقي.</p>
+              <p>اختبار مبادرة منافسون: 30 فقرة، ورقة تظليل بباركود لكل طالب، ثم تصحيح آلي ورصد مفصل.</p>
               <div class="hero-actions">
-                <button class="btn btn-gold btn-lg" onclick="App.go('design')"><svg class="ic"><use href="#i-sparkles"/></svg> ابدأ اختباراً</button>
+                <button class="btn btn-gold btn-lg" onclick="App.go('manafisoun')"><svg class="ic"><use href="#i-sparkles"/></svg> ابدأ منافسون</button>
                 <button class="btn btn-glass" onclick="App.go('students')"><svg class="ic"><use href="#i-upload"/></svg> استيراد الطلاب</button>
-                <button class="btn btn-glass" onclick="App.seedDemo()"><svg class="ic"><use href="#i-bolt"/></svg> جرّب الآن</button>
               </div>
               <div class="hero-trust">
                 <span><svg class="ic"><use href="#i-shield"/></svg> بياناتك على جهازك</span>
@@ -958,17 +970,17 @@ tbody tr:hover td{background:#f8fbff}
             </div>
           </div>
           <div class="hero-stats">
-            <div><b>3</b><span>مراحل دراسية</span></div>
-            <div><b>9</b><span>صفوف مدعومة</span></div>
-            <div><b>4</b><span>مواد داخل ورقة نافس</span></div>
+            <div><b>30</b><span>سؤال منافسون</span></div>
+            <div><b>3</b><span>مواد</span></div>
+            <div><b>1448</b><span>العام الدراسي</span></div>
             <div><b>≈2s</b><span>قراءة الورقة</span></div>
           </div>
         </div>
 
         <div class="quick-grid">
           <button class="quick" onclick="App.go('students')"><span class="q-ic blue"><svg class="ic"><use href="#i-users"/></svg></span><span><b>الطلاب</b><i>استيراد Excel وإدارة السجلات</i></span><svg class="q-arrow ic"><use href="#i-chevron"/></svg></button>
-          <button class="quick" onclick="App.go('design')"><span class="q-ic gold"><svg class="ic"><use href="#i-edit"/></svg></span><span><b>تصميم اختبار</b><i>أسئلة نافس ونموذج الإجابة</i></span><svg class="q-arrow ic"><use href="#i-chevron"/></svg></button>
-          <button class="quick" onclick="App.go('scan')"><span class="q-ic green"><svg class="ic"><use href="#i-camera"/></svg></span><span><b>تصحيح ورقة</b><i>كاميرا الجوال أو الماسح</i></span><svg class="q-arrow ic"><use href="#i-chevron"/></svg></button>
+          <button class="quick" onclick="App.go('manafisoun')"><span class="q-ic gold"><svg class="ic"><use href="#i-award"/></svg></span><span><b>مبادرة منافسون</b><i>أوراق التظليل والرصد</i></span><svg class="q-arrow ic"><use href="#i-chevron"/></svg></button>
+          <button class="quick" onclick="App.manafisounScan()"><span class="q-ic green"><svg class="ic"><use href="#i-camera"/></svg></span><span><b>تصحيح منافسون</b><i>كاميرا الجوال أو الماسح</i></span><svg class="q-arrow ic"><use href="#i-chevron"/></svg></button>
           <button class="quick" onclick="App.go('codes')"><span class="q-ic navy"><svg class="ic"><use href="#i-barcode"/></svg></span><span><b>صفحات الطلاب</b><i>باركود وطباعة A4 لكل طالب</i></span><svg class="q-arrow ic"><use href="#i-chevron"/></svg></button>
         </div>
 
@@ -985,7 +997,7 @@ tbody tr:hover td{background:#f8fbff}
             <div class="card-h"><h3><svg class="ic"><use href="#i-layers"/></svg> توزيع الطلاب على المراحل</h3></div>
             <div id="dashStages"></div>
             <div class="sep"></div>
-            <div class="card-h" style="margin-bottom:10px"><h3><svg class="ic"><use href="#i-award"/></svg> جاهزية اختبار نافس</h3></div>
+            <div class="card-h" style="margin-bottom:10px"><h3><svg class="ic"><use href="#i-award"/></svg> جاهزية مبادرة منافسون</h3></div>
             <div id="dashNafs"></div>
           </div>
         </div>
@@ -1273,7 +1285,7 @@ tbody tr:hover td{background:#f8fbff}
 
       <!-- ================= SCAN ================= -->
       <section class="panel" id="p-scan">
-        <div class="card">
+        <div class="card" id="scanPickCard">
           <div class="card-h"><h3><svg class="ic"><use href="#i-layers"/></svg> اختر الاختبار المُراد تصحيحه</h3><span class="sp"></span><span class="badge dark" id="scanTag">—</span></div>
           <div class="row" style="margin-bottom:10px"><div class="chips" id="scanStageChips"></div></div>
           <div class="chips" id="scanGradeChips" style="margin-bottom:14px"></div>
@@ -1457,7 +1469,6 @@ tbody tr:hover td{background:#f8fbff}
             <div class="stack" style="gap:9px">
               <button class="btn btn-ghost btn-block" onclick="App.exportBackup()"><svg class="ic"><use href="#i-download"/></svg> تصدير نسخة احتياطية (JSON)</button>
               <label class="btn btn-ghost btn-block" style="cursor:pointer"><svg class="ic"><use href="#i-upload"/></svg> استيراد نسخة احتياطية<input type="file" id="restoreInput" accept=".json" hidden></label>
-              <button class="btn btn-gold btn-block" onclick="App.seedDemo()"><svg class="ic"><use href="#i-bolt"/></svg> تحميل بيانات تجريبية</button>
               <button class="btn btn-red btn-block" onclick="App.resetAll()"><svg class="ic"><use href="#i-trash"/></svg> حذف كل البيانات</button>
             </div>
             <div class="sep"></div>
@@ -1489,8 +1500,8 @@ tbody tr:hover td{background:#f8fbff}
 <nav class="bottom-nav" id="bottomNav" aria-label="التنقل السريع">
   <button class="active" data-panel="dashboard"><svg class="ic"><use href="#i-grid"/></svg><span>الرئيسية</span></button>
   <button data-panel="students"><svg class="ic"><use href="#i-users"/></svg><span>الطلاب</span></button>
-  <button data-panel="design"><svg class="ic"><use href="#i-edit"/></svg><span>تصميم</span></button>
-  <button data-panel="scan"><svg class="ic"><use href="#i-camera"/></svg><span>تصحيح</span></button>
+  
+  
   <button data-panel="manafisoun"><svg class="ic"><use href="#i-award"/></svg><span>منافسون</span></button>
   <button data-panel="results"><svg class="ic"><use href="#i-chart"/></svg><span>النتائج</span></button>
 </nav>
@@ -3282,7 +3293,7 @@ const App = {
       students: ['بيانات الطلاب', 'الطلاب', 'إدارة الطلاب والاستيراد من Excel'],
       design: ['بناء الاختبار', 'تصميم الاختبار', 'الأسئلة ونموذج الإجابة وأوراق الطباعة'],
       manafisoun: ['المبادرات', 'مبادرة منافسون', '30 فقرة · أوراق تظليل · رصد النتائج'],
-      scan: ['التصحيح', 'التصحيح الآلي', 'ارفع الأوراق واقرأ الباركود والفقاعات'],
+      scan: ['التصحيح', 'تصحيح منافسون', 'ارفع أوراق منافسون واقرأ الباركود والفقاعات'],
       results: ['التحليل', 'النتائج والتحليل', 'جداول وإحصاءات وتوزيع ومستويات نافس'],
       codes: ['الهوية والباركود', 'الباركود وصفحات الطلاب', 'صفحة A4 لكل طالب بباركود ونتائج'],
       settings: ['النظام', 'الإعدادات والنسخ', 'البيانات والنسخ الاحتياطي ومستويات نافس']
@@ -3300,6 +3311,27 @@ const App = {
     if (panel === 'codes') this.renderCodes();
     if (panel === 'settings') this.renderSettings();
     setTimeout(() => { try { this.refit(); } catch (e) { } }, 40);
+  },
+
+  startNewManafisoun() {
+    if (!confirm('بداية اختبار جديد؟\n\nسيتم حذف:\n• جميع الاختبارات ومفاتيح الإجابة\n• جميع نتائج التصحيح والأوراق\n• أسماء المواد المخصصة (تعود للافتراضي)\n\nوسيتم الاحتفاظ بأسماء الطلاب وبيانات المدرسة.\n\nهل تريد المتابعة؟')) return;
+    DB.d.exams = {};
+    DB.d.results = [];
+    DB.d.manafisoun = { labels: MANAFISOUN.groups.map((g) => g.label) };
+    DB.save();
+    this.state.files = [];
+    this.state.rows = [];
+    this.state.sheets = null;
+    this.state.sheetView = null;
+    this.state.lastScan = null;
+    this.state.mnfSheets = null;
+    this.state.mnfView = null;
+    this.state.mnfStudents = null;
+    this.state.mnfSelected = {};
+    this.state.manafisoun = { grade: this.state.manafisoun.grade || 'middle_3', section: '' };
+    this.state.scan = { stage: 'middle', grade: this.state.manafisoun.grade, subject: 'manafisoun' };
+    this.go('manafisoun');
+    toast('تم بدء اختبار جديد — احتُفظ بأسماء الطلاب', 'ok');
   },
 
   bindForms() {
@@ -4107,6 +4139,8 @@ Object.assign(App, {
   /* ================= scan: files ================= */
   renderScan() {
     this.renderPickers('scan');
+    const pick = $('scanPickCard');
+    if (pick) pick.style.display = this.state.scan.subject === 'manafisoun' ? 'none' : '';
     this.renderFiles();
     this.renderScanTable();
     this.updateScanReady();
@@ -4119,7 +4153,7 @@ Object.assign(App, {
     const exam = this.scanExam();
     const n = DB.studentsOf(st.grade, '').length;
     if (!exam || !exam.questions.length) {
-      box.innerHTML = 'لا يوجد اختبار جاهز لهذا الصف والمادة — انتقل إلى «تصميم الاختبار» وابنِ الاختبار أولاً.';
+      box.innerHTML = 'لا يوجد اختبار منافسون جاهز لهذا الصف — انتقل إلى «مبادرة منافسون» واضغط «تجهيز اختبار منافسون» أولاً.';
       return;
     }
     const items = Layout.enumerate(exam);
