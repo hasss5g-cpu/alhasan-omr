@@ -2440,6 +2440,7 @@ const Sheet = {
       '.sheet{width:210mm;height:297mm;background:#fff;position:relative;color:#000;font-family:"Tahoma","Segoe UI",sans-serif;direction:rtl;overflow:hidden;contain:layout style}',
       '.sheet .abs{position:absolute;overflow:hidden}',
       '.abs.rect{border:1.5px solid #000}',
+      '.abs.band{border:0;z-index:0;pointer-events:none}',
       '.abs.head{background:#0a2c50;color:#fff;font-size:8.8px;font-weight:900;display:flex;align-items:center;justify-content:center}',
       '.abs.text{display:flex;flex-direction:column;justify-content:center}',
       '.abs.text.t-right{align-items:flex-end;text-align:right}',
@@ -2486,6 +2487,11 @@ const Sheet = {
     let out = '<div class="sheet" data-sheet>';
     lay.blocks.forEach((b) => {
       if (b.k === 'fid') { out += '<div class="abs fid" style="left:' + mm(b.x) + ';top:' + mm(b.y) + ';width:' + mm(b.w) + ';height:' + mm(b.h) + '"></div>'; return; }
+      if (b.k === 'band') {
+        out += '<div class="abs band" style="left:' + mm(b.x) + ';top:' + mm(b.y) + ';width:' + mm(b.w) + ';height:' + mm(b.h) +
+          ';background:' + (b.fill || '#f3f7fb') + '"></div>';
+        return;
+      }
       if (b.k === 'rect') { out += '<div class="abs rect" style="left:' + mm(b.x) + ';top:' + mm(b.y) + ';width:' + mm(b.w) + ';height:' + mm(b.h) + '"></div>'; return; }
       if (b.k === 'line') { out += '<div class="abs line" style="left:' + mm(b.x) + ';top:' + mm(b.y) + ';width:' + mm(b.w) + '"></div>'; return; }
       if (b.k === 'head') { out += '<div class="abs head" style="left:' + mm(b.x) + ';top:' + mm(b.y) + ';width:' + mm(b.w) + ';height:' + mm(b.h) + '">' + b.html + '</div>'; return; }
@@ -2638,6 +2644,11 @@ const ManafisounLayout = {
     const startX = 12;
     const rowTop = 124, rowH = 14.7;
     const bubD = 4.2, optGap = 1.9;
+
+    /* تظليل سطر وترك سطر لتسهيل تتبّع صفوف الإجابات */
+    for (let rb = 0; rb < 10; rb++) {
+      if (rb % 2 === 0) push({ k: 'band', x: 12, y: rowTop + rb * rowH, w: 186, h: rowH, fill: '#f3f7fb' });
+    }
 
     groups.forEach((grp, gi) => {
       /* العمود الأول يبدأ من اليمين: الرياضيات يمينًا ثم لغتي ثم العلوم */
@@ -6731,6 +6742,7 @@ async function runManafisounTest() {
   [[6, 6], [198, 6], [6, 285], [198, 285]].forEach((p) => sx.fillRect(p[0] * K, p[1] * K, 6 * K, 6 * K));
   sx.strokeStyle = '#000'; sx.lineWidth = 1.2;
   layout.blocks.forEach((b) => {
+    if (b.k === 'band') { sx.fillStyle = b.fill || '#f3f7fb'; sx.fillRect(b.x * K, b.y * K, b.w * K, b.h * K); }
     if (b.k === 'rect') sx.strokeRect(b.x * K, b.y * K, b.w * K, b.h * K);
     if (b.k === 'head') { sx.fillStyle = '#0a2c50'; sx.fillRect(b.x * K, b.y * K, b.w * K, b.h * K); }
     if (b.k === 'line') { sx.beginPath(); sx.moveTo(b.x * K, b.y * K); sx.lineTo((b.x + b.w) * K, b.y * K); sx.strokeStyle = '#aaa'; sx.stroke(); sx.strokeStyle = '#000'; }
@@ -6816,6 +6828,7 @@ async function runManafisounE2E() {
   sx.fillStyle = '#000';
   [[6, 6], [198, 6], [6, 285], [198, 285]].forEach((p) => sx.fillRect(p[0] * K, p[1] * K, 6 * K, 6 * K));
   layout.blocks.forEach((b) => {
+    if (b.k === 'band') { sx.fillStyle = b.fill || '#f3f7fb'; sx.fillRect(b.x * K, b.y * K, b.w * K, b.h * K); }
     if (b.k === 'rect') { sx.strokeStyle = '#000'; sx.lineWidth = 1.2; sx.strokeRect(b.x * K, b.y * K, b.w * K, b.h * K); }
     if (b.k === 'bub') {
       const cx = (b.x + b.w / 2) * K, cy = (b.y + b.h / 2) * K;
