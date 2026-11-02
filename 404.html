@@ -797,6 +797,8 @@ tbody tr:hover td{background:#f8fbff}
 .mnf-st-id{font-size:10.5px;color:#8296ad;font-family:'Courier New',monospace}
 .mnf-st-sec{font-size:9.5px;background:#eef5ff;color:#1558a8;border-radius:8px;padding:2px 7px;margin-inline-start:auto;font-weight:800;white-space:nowrap}
 .mnf-st-empty{padding:18px;text-align:center;color:#8296ad;font-size:12px}
+.mnf-st-row.on{background:#eef8f2}
+.mnf-st-row.on .mnf-st-name{color:#0b6b45}
 </style>
 </head>
 <body>
@@ -1191,22 +1193,8 @@ tbody tr:hover td{background:#f8fbff}
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-h"><h3><svg class="ic"><use href="#i-layers"/></svg> أسماء المواد فوق الأعمدة</h3><span class="sp"></span><span class="badge grey">تظهر من اليمين إلى اليسار</span></div>
-          <div class="grid g3">
-            <div class="field"><label>العمود الأول (يمين) · فقرات 1–10</label><input type="text" id="mnfLabel0" maxlength="24" placeholder="الرياضيات"></div>
-            <div class="field"><label>العمود الثاني · فقرات 11–20</label><input type="text" id="mnfLabel1" maxlength="24" placeholder="لغتي"></div>
-            <div class="field"><label>العمود الثالث (يسار) · فقرات 21–30</label><input type="text" id="mnfLabel2" maxlength="24" placeholder="العلوم"></div>
-          </div>
-          <div class="row" style="margin-top:10px">
-            <button class="btn btn-primary btn-sm" onclick="App.saveManafisounLabels()"><svg class="ic"><use href="#i-save"/></svg> حفظ أسماء المواد</button>
-            <button class="btn btn-ghost btn-sm" onclick="App.resetManafisounLabels()">استعادة الافتراضي</button>
-            <span class="hint">تُطبع فوق الأعمدة في ورقة الطالب، وتُحدَّث في محرر المفتاح.</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-h"><h3><svg class="ic"><use href="#i-users"/></svg> اختيار الطلاب من فصول مختلفة</h3><span class="sp"></span><span class="badge" id="mnfSelectedCount">0 محدد</span></div>
+        <div class="card" id="mnfPickerCard">
+          <div class="card-h"><h3><svg class="ic"><use href="#i-users"/></svg> اختيار الطلاب من فصول مختلفة — منافسون</h3><span class="sp"></span><span class="badge" id="mnfSelectedCount">0 محدد</span></div>
           <div class="row" style="margin-bottom:9px">
             <div style="position:relative;flex:1;min-width:220px">
               <input type="search" id="mnfStudentSearch" placeholder="ابحث بالاسم أو رقم السجل…" style="width:100%;padding-inline-start:30px">
@@ -1219,6 +1207,20 @@ tbody tr:hover td{background:#f8fbff}
           </div>
           <div class="mnf-students" id="mnfStudentsList"></div>
           <div class="hint" style="margin-top:6px">القائمة تعرض جميع فصول الصف؛ حدّد أي عدد من الطلاب ثم ولّد أوراقهم فقط.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h3><svg class="ic"><use href="#i-layers"/></svg> أسماء المواد فوق الأعمدة</h3><span class="sp"></span><span class="badge grey">تظهر من اليمين إلى اليسار</span></div>
+          <div class="grid g3">
+            <div class="field"><label>العمود الأول (يمين) · فقرات 1–10</label><input type="text" id="mnfLabel0" maxlength="24" placeholder="الرياضيات"></div>
+            <div class="field"><label>العمود الثاني · فقرات 11–20</label><input type="text" id="mnfLabel1" maxlength="24" placeholder="لغتي"></div>
+            <div class="field"><label>العمود الثالث (يسار) · فقرات 21–30</label><input type="text" id="mnfLabel2" maxlength="24" placeholder="العلوم"></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-primary btn-sm" onclick="App.saveManafisounLabels()"><svg class="ic"><use href="#i-save"/></svg> حفظ أسماء المواد</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.resetManafisounLabels()">استعادة الافتراضي</button>
+            <span class="hint">تُطبع فوق الأعمدة في ورقة الطالب، وتُحدَّث في محرر المفتاح.</span>
+          </div>
         </div>
 
         <div class="grid g3">
@@ -1245,6 +1247,7 @@ tbody tr:hover td{background:#f8fbff}
             <div class="card-h"><h3><svg class="ic"><use href="#i-printer"/></svg> 3 · أوراق التظليل</h3></div>
             <div class="stack" style="gap:8px">
               <button class="btn btn-primary btn-block" onclick="App.manafisounBuildSheets()"><svg class="ic"><use href="#i-bolt"/></svg> توليد الأوراق</button>
+              <button class="btn btn-soft btn-block" onclick="App.manafisounBuildSelectedSheets()"><svg class="ic"><use href="#i-check"/></svg> توليد أوراق المحددين (<span id="mnfSelInline">0</span>)</button>
               <button class="btn btn-ghost btn-block" onclick="App.manafisounPreview()"><svg class="ic"><use href="#i-eye"/></svg> معاينة</button>
               <button class="btn btn-green btn-block" onclick="App.manafisounPrint()"><svg class="ic"><use href="#i-printer"/></svg> طباعة</button>
               <button class="btn btn-ghost btn-block" onclick="App.manafisounDownload()"><svg class="ic"><use href="#i-download"/></svg> تنزيل HTML</button>
@@ -5437,6 +5440,7 @@ Object.assign(App, {
   updateMnfSelectedCount() {
     const n = this.mnfSelectedStudents().length;
     if ($('mnfSelectedCount')) $('mnfSelectedCount').textContent = n + ' محدد';
+    if ($('mnfSelInline')) $('mnfSelInline').textContent = n;
     return n;
   },
 
@@ -5457,17 +5461,21 @@ Object.assign(App, {
     }
     const sel = this.state.mnfSelected || {};
     box.innerHTML = list.map((s) =>
-      '<label class="mnf-st-row"><input type="checkbox" data-sid="' + esc(s.sid) + '"' + (sel[s.sid] ? ' checked' : '') +
-      ' onchange="App.toggleManafisounStudent(\'' + esc(s.sid) + '\',this.checked)">' +
+      '<label class="mnf-st-row' + (sel[s.sid] ? ' on' : '') + '"><input type="checkbox" data-sid="' + esc(s.sid) + '"' + (sel[s.sid] ? ' checked' : '') +
+      ' onchange="App.toggleManafisounStudent(\'' + esc(s.sid) + '\',this.checked,this)">' +
       '<span class="mnf-st-name">' + esc(s.name) + '</span>' +
       '<span class="mnf-st-id">' + esc(s.id) + '</span>' +
       '<span class="mnf-st-sec">فصل ' + esc(s.section || '—') + '</span></label>').join('');
     this.updateMnfSelectedCount();
   },
 
-  toggleManafisounStudent(sid, checked) {
+  toggleManafisounStudent(sid, checked, el) {
     if (checked) this.state.mnfSelected[sid] = true;
     else delete this.state.mnfSelected[sid];
+    if (el && el.closest) {
+      const row = el.closest('.mnf-st-row');
+      if (row) row.classList.toggle('on', !!checked);
+    }
     this.updateMnfSelectedCount();
   },
 
