@@ -1289,6 +1289,7 @@ tbody tr:hover td{background:#f8fbff}
             <button class="btn btn-primary" onclick="App.manafisounScan()"><svg class="ic"><use href="#i-camera"/></svg> تصحيح أوراق منافسون</button>
             <button class="btn btn-ghost" onclick="App.manafisounResults()"><svg class="ic"><use href="#i-chart"/></svg> عرض النتائج</button>
             <button class="btn btn-soft" onclick="App.manafisounReview()"><svg class="ic"><use href="#i-eye"/></svg> مراجعة الحالات <span class="badge" id="mnfReviewCount">0</span></button>
+            <button class="btn btn-soft" onclick="App.manafisounAnalysis()"><svg class="ic"><use href="#i-chart"/></svg> تحليل شامل</button>
             <span class="sp"></span>
             <button class="btn btn-soft" onclick="App.exportManafisounDetailedExcel()"><svg class="ic"><use href="#i-download"/></svg> تصدير Excel مفصل</button>
             <button class="btn btn-gold" onclick="App.exportManafisounExcel()"><svg class="ic"><use href="#i-download"/></svg> تصدير رصد منافسون Excel</button>
@@ -1411,6 +1412,7 @@ tbody tr:hover td{background:#f8fbff}
         <div class="card pad-0">
           <div class="card-h"><h3><svg class="ic"><use href="#i-users"/></svg> جدول النتائج</h3><span class="sp"></span>
             <button class="btn btn-soft btn-sm" id="resReviewBtn" style="display:none" onclick="App.mnfReviewFromResults()"><svg class="ic"><use href="#i-eye"/></svg> مراجعة الحالات <span class="badge" id="resReviewCount">0</span></button>
+            <button class="btn btn-soft btn-sm" id="resAnalysisBtn" style="display:none" onclick="App.mnfAnalysisFromResults()"><svg class="ic"><use href="#i-chart"/></svg> تحليل شامل</button>
             <button class="btn btn-green btn-sm" onclick="App.exportExcel()"><svg class="ic"><use href="#i-download"/></svg> Excel</button>
             <button class="btn btn-ghost btn-sm" onclick="App.exportCSV()"><svg class="ic"><use href="#i-download"/></svg> CSV</button>
             <button class="btn btn-ghost btn-sm" onclick="App.exportWord()"><svg class="ic"><use href="#i-file"/></svg> Word</button>
@@ -1831,6 +1833,15 @@ const MANAFISOUN = {
   ]
 };
 
+const MANAFISOUN_SKILLS = [
+  'قراءة الأعداد وكتابتها', 'العمليات الأربع', 'الكسور', 'الأعداد العشرية', 'النسبة والتناسب',
+  'الجبر والمعادلات', 'الهندسة والزوايا', 'المحيط والمساحة', 'القياس والوحدات', 'الإحصاء والاحتمال',
+  'فهم المقروء', 'المفردات والمعاني', 'النحو والتراكيب', 'الإملاء', 'علامات الترقيم',
+  'الأساليب البلاغية', 'النص الشعري', 'النص النثري', 'التعبير الكتابي', 'الاستنتاج والتحليل',
+  'الخلية والكائنات الحية', 'أجهزة جسم الإنسان', 'المادة وتغيراتها', 'الذرة والعناصر', 'القوى والحركة',
+  'الطاقة والتحولات', 'الكهرباء والمغناطيسية', 'الأرض والفضاء', 'البيئة والموارد', 'الطريقة العلمية'
+];
+
 const ALL_SUBJECTS = SUBJECTS.concat([MANAFISOUN_SUBJECT], NAFS_SUBJECTS);
 const SUBJECT_BY_ID = {};
 ALL_SUBJECTS.forEach((s) => { SUBJECT_BY_ID[s.id] = s; });
@@ -2151,7 +2162,7 @@ const Grade = {
     if (pct >= 70) return 'جيد';
     if (pct >= 65) return 'مقبول مرتفع';
     if (pct >= 60) return 'مقبول';
-    return 'راسب';
+    return 'غير متقن';
   }
 };
 
@@ -3238,7 +3249,8 @@ const App = {
     mnfSheets: null,
     mnfView: null,
     mnfStudents: null,
-    mnfSelected: {}
+    mnfSelected: {},
+    mnfAnalysisHTML: null
   },
 
   /* ---------------- boot ---------------- */
@@ -4604,6 +4616,8 @@ Object.assign(App, {
       rv.style.display = show ? '' : 'none';
       if (show && $('resReviewCount')) $('resReviewCount').textContent = this.mnfReviewCases(list).length;
     }
+    const ra = $('resAnalysisBtn');
+    if (ra) ra.style.display = cur.subjectId === 'manafisoun' ? '' : 'none';
     if (!tb) return;
 
     if (!list.length) {
@@ -4678,7 +4692,7 @@ Object.assign(App, {
           }).join('');
       } else {
         lvBox.innerHTML = '<div style="font-size:11.5px;font-weight:800;color:#1558a8;margin-bottom:7px">التقديرات</div>' +
-          ['ممتاز', 'جيد جداً', 'جيد', 'مقبول', 'راسب'].map((label) => {
+          ['ممتاز', 'جيد جداً', 'جيد', 'مقبول', 'غير متقن'].map((label) => {
             const n = list.filter((r) => this.resultLevel(r).label.indexOf(label.split(' ')[0]) === 0).length;
             const p = list.length ? n / list.length * 100 : 0;
             return '<div class="bar-row"><div style="font-size:11px;font-weight:700;color:#40566f">' + label + '</div>' +
@@ -5931,6 +5945,265 @@ Object.assign(App, {
     this.renderManafisoun();
     this.manafisounReview();
     toast('تم تصحيح السؤال ' + q + ' يدوياً', 'ok');
+  },
+
+  mnfAnalysisData() {
+    const list = this.mnfResults().slice().sort((a, b) => String(a.studentName || '').localeCompare(String(b.studentName || ''), 'ar'));
+    if (!list.length) return null;
+    const labels = this.mnfLabels();
+    const g = gradeByKey(this.state.manafisoun.grade);
+    const section = this.state.manafisoun.section || 'كل الفصول';
+    const school = DB.d.school.name || '—';
+    const subjects = [
+      { key: 'math', label: labels[0], from: 1, to: 10, color: '#1558a8' },
+      { key: 'arabic', label: labels[1], from: 11, to: 20, color: '#0f7a56' },
+      { key: 'science', label: labels[2], from: 21, to: 30, color: '#c9973f' }
+    ].map((s) => {
+      const scores = list.map((r) => this.mnfScores(r)[s.key]);
+      const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+      const pass = scores.filter((v) => v >= 5).length;
+      const weak = scores.filter((v) => v < 5).length;
+      const max = scores.length ? Math.max.apply(null, scores) : 0;
+      const min = scores.length ? Math.min.apply(null, scores) : 0;
+      const dist = [0, 0, 0, 0, 0];
+      scores.forEach((v) => { dist[v <= 2 ? 0 : v <= 4 ? 1 : v <= 6 ? 2 : v <= 8 ? 3 : 4]++; });
+      const perQ = [];
+      for (let q = s.from; q <= s.to; q++) {
+        const correct = list.filter((r) => Number(r.perQ && r.perQ[q]) === 1).length;
+        const pct = list.length ? Math.round(correct / list.length * 1000) / 10 : 0;
+        perQ.push({ q: q, skill: MANAFISOUN_SKILLS[q - 1], correct: correct, pct: pct, missing: list.length - correct });
+      }
+      const missing = perQ.filter((x) => x.pct < 60).sort((a, b) => a.pct - b.pct);
+      const weakStudents = list.map((r) => ({ r: r, score: this.mnfScores(r)[s.key] }))
+        .filter((x) => x.score < 5).sort((a, b) => a.score - b.score);
+      return Object.assign({}, s, {
+        scores: scores, avg: avg, pass: pass, weak: weak, max: max, min: min, dist: dist,
+        perQ: perQ, missing: missing, weakStudents: weakStudents,
+        passPct: list.length ? pass / list.length * 100 : 0,
+        avgPct: avg / 10 * 100
+      });
+    });
+    const totals = list.map((r) => this.mnfScores(r).total);
+    const avgTotal = totals.length ? totals.reduce((a, b) => a + b, 0) / totals.length : 0;
+    const passTotal = totals.filter((v) => v >= 18).length;
+    const weakAll = list.map((r) => {
+      const sc = this.mnfScores(r);
+      const weakSubjects = subjects.filter((s) => sc[s.key] < 5).map((s) => s.label);
+      return { r: r, sc: sc, weakSubjects: weakSubjects };
+    }).filter((x) => x.sc.total < 18).sort((a, b) => a.sc.total - b.sc.total);
+    const priorities = [];
+    subjects.forEach((s) => s.missing.forEach((m) => priorities.push({ subject: s.label, color: s.color, q: m.q, skill: m.skill, pct: m.pct, missing: m.missing })));
+    priorities.sort((a, b) => a.pct - b.pct);
+    return {
+      list: list, labels: labels, g: g, school: school, section: section, date: dateStr(),
+      subjects: subjects, totals: totals,
+      overall: {
+        avg: avgTotal, max: totals.length ? Math.max.apply(null, totals) : 0,
+        min: totals.length ? Math.min.apply(null, totals) : 0,
+        pass: passTotal, weak: weakAll.length,
+        passPct: list.length ? passTotal / list.length * 100 : 0
+      },
+      weakAll: weakAll, priorities: priorities.slice(0, 10)
+    };
+  },
+
+  mnfBars(items, opt) {
+    opt = opt || {};
+    const w = opt.w || 360, h = opt.h || 132, pad = 20;
+    const max = opt.max || Math.max.apply(null, items.map((i) => i.value).concat([1]));
+    const bw = (w - pad * 2) / Math.max(1, items.length);
+    let s = '';
+    items.forEach((it, i) => {
+      const bh = Math.max(0, (h - pad * 2) * (Number(it.value) || 0) / max);
+      const x = pad + i * bw + bw * 0.13, y = h - pad - bh, bwid = bw * 0.74;
+      const color = it.color || '#1558a8';
+      s += '<rect x="' + x + '" y="' + y + '" width="' + bwid + '" height="' + bh + '" rx="2" fill="' + color + '"/>';
+      s += '<text x="' + (x + bwid / 2) + '" y="' + (h - pad + 9) + '" text-anchor="middle" font-size="6.5" fill="#5d6f86" font-family="Tahoma">' + esc(it.label) + '</text>';
+      if (opt.showValue) s += '<text x="' + (x + bwid / 2) + '" y="' + (y - 3) + '" text-anchor="middle" font-size="6.5" font-weight="700" fill="#0d2137" font-family="Tahoma">' + esc(it.text != null ? it.text : it.value) + '</text>';
+    });
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block">' +
+      '<line x1="' + pad + '" y1="' + (h - pad) + '" x2="' + (w - pad) + '" y2="' + (h - pad) + '" stroke="#d7e1ec"/>' + s + '</svg>';
+  },
+
+  buildMnfAnalysisHTML() {
+    const d = this.mnfAnalysisData();
+    if (!d) return '';
+    const css = `
+@page{size:A4;margin:9mm}
+*{box-sizing:border-box}
+body{margin:0;background:#e9eff6;color:#0d2137;font-family:Tahoma,"Segoe UI",sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rpt-page{width:192mm;min-height:279mm;margin:0 auto 7mm;background:#fff;padding:8mm 8mm 10mm;position:relative;box-shadow:0 2px 14px rgba(12,49,87,.12);page-break-after:always;overflow:hidden}
+.rpt-page:last-child{page-break-after:auto}
+.rpt-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #0c3157;padding-bottom:3mm;margin-bottom:3mm}
+.rpt-kicker{font-size:7.5px;color:#6b7f95;font-weight:800;letter-spacing:.2px}
+.rpt-head h1{font-size:19px;margin:1px 0;color:#0c3157;font-weight:900}
+.rpt-head p{margin:0;color:#5d6f86;font-size:9px}
+.rpt-mark{width:15mm;height:15mm;border-radius:50%;background:#0c3157;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900}
+.rpt-mark b{font-size:17px;line-height:1}.rpt-mark span{font-size:6px;opacity:.85}
+.rpt-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:2.5mm;margin-bottom:2.5mm}
+.rpt-kpi{border:1px solid #d7e1ec;border-radius:2mm;padding:2mm;background:#f7fafd;text-align:center}
+.rpt-kpi b{display:block;font-size:15px;color:#0c3157;font-weight:900;line-height:1.1}
+.rpt-kpi span{font-size:7px;color:#6b7f95}
+.rpt-grid{display:grid;grid-template-columns:1.12fr .88fr;gap:2.5mm;margin-bottom:2.5mm}
+.rpt-grid.two{grid-template-columns:1fr 1fr}
+.rpt-card{border:1px solid #d7e1ec;border-radius:2mm;padding:2.2mm;background:#fff;min-width:0}
+.rpt-card h3{font-size:9.5px;margin:0 0 1.5mm;color:#0c3157;font-weight:900}
+.rpt-tbl{max-height:118mm;overflow:hidden;width:100%}
+.rpt-tbl table{width:100%;border-collapse:collapse;font-size:7px;table-layout:fixed}
+.rpt-tbl th{background:#eef4fa;color:#0c3157;font-size:6.8px;padding:1mm .6mm;border-bottom:1px solid #cfdce9;text-align:center;font-weight:900;overflow-wrap:anywhere}
+.rpt-tbl td{padding:.85mm .6mm;border-bottom:1px solid #eef2f6;text-align:center;overflow-wrap:anywhere}
+.rpt-tbl td.name{text-align:right;font-weight:700;white-space:normal}
+.rpt-list{margin:0;padding-right:4mm;font-size:8px;line-height:1.9;color:#3d5268}
+.rpt-list li{margin-bottom:.6mm}
+.rpt-tbl tr:nth-child(even) td{background:#fafcfe}
+.rpt-level{display:inline-block;border-radius:4mm;padding:.5mm 1.6mm;font-size:6.6px;font-weight:800;background:#eef4fa;color:#1558a8}
+.rpt-level.good{background:#e7f6ee;color:#0b6b45}.rpt-level.mid{background:#fff6e5;color:#a9780f}.rpt-level.low{background:#fdecea;color:#a32d20}
+.rpt-note{font-size:8px;color:#6b7f95;margin:2mm 0 0;line-height:1.7}
+.rpt-empty{font-size:8px;color:#6b7f95;padding:3mm;text-align:center;background:#f7fafd;border-radius:2mm}
+.rpt-foot{position:absolute;bottom:4mm;left:8mm;right:8mm;border-top:1px solid #e1e9f1;padding-top:1.5mm;display:flex;justify-content:space-between;font-size:6.5px;color:#8296ad}
+.rpt-table-wrap{border:1px solid #d7e1ec;border-radius:2mm;overflow:hidden;margin-bottom:2.5mm}
+.rpt-table-wrap table{width:100%;border-collapse:collapse;font-size:7px;table-layout:fixed}
+.rpt-table-wrap th{background:#0c3157;color:#fff;padding:1.2mm .8mm;font-size:6.8px;text-align:center;overflow-wrap:anywhere}
+.rpt-table-wrap td{padding:.95mm .8mm;border-bottom:1px solid #eef2f6;text-align:center;overflow-wrap:anywhere}
+.rpt-table-wrap td.name{text-align:right;font-weight:700}
+.rpt-pill{display:inline-block;border-radius:4mm;padding:.5mm 1.6mm;font-size:6.6px;font-weight:800;background:#fdecea;color:#a32d20}
+@media print{body{background:#fff}.rpt-page{box-shadow:none;margin:0;width:auto;min-height:279mm;padding:0;page-break-after:always}.rpt-page:last-child{page-break-after:auto}.rpt-tbl{max-height:none;overflow:visible}}
+`;
+    const levelCls = (pct) => pct >= 75 ? 'good' : pct >= 60 ? 'mid' : 'low';
+    const levelTxt = (pct) => Grade.rank(pct);
+    const pageTop = (title, sub, n) => '<div class="rpt-head"><div><div class="rpt-kicker">مبادرة منافسون · تقرير تحليلي شامل</div>' +
+      '<h1>' + esc(title) + '</h1><p>' + esc(sub) + '</p></div><div class="rpt-mark"><b>' + n + '</b><span>من 4</span></div></div>';
+
+    let pages = '';
+    d.subjects.forEach((s, si) => {
+      const rows = d.list.map((r, i) => {
+        const sc = this.mnfScores(r)[s.key];
+        const pct = sc / 10 * 100;
+        return '<tr><td>' + (i + 1) + '</td><td class="name">' + esc(r.studentName || '—') + '</td>' +
+          '<td><b>' + sc + '</b> / 10</td><td>' + nfmt(pct, 1) + '%</td>' +
+          '<td><span class="rpt-level ' + levelCls(pct) + '">' + esc(levelTxt(pct)) + '</span></td></tr>';
+      }).join('');
+      const dist = this.mnfBars(
+        ['0–2', '3–4', '5–6', '7–8', '9–10'].map((label, i) => ({ label: label, value: s.dist[i], color: i < 2 ? '#b3261e' : i === 2 ? '#c9973f' : s.color })),
+        { h: 120, showValue: true }
+      );
+      const qbars = this.mnfBars(s.perQ.map((x) => ({ label: 'س' + x.q, value: x.pct, text: x.pct + '%', color: x.pct < 60 ? '#b3261e' : s.color })), { h: 125, max: 100 });
+      const missRows = s.missing.length ? s.missing.slice(0, 7).map((m) => '<tr><td class="name">' + esc(m.skill) + '</td><td>' + nfmt(m.pct, 1) + '%</td><td>' + m.missing + '</td></tr>').join('') : '';
+      const weakRows = s.weakStudents.length ? s.weakStudents.slice(0, 9).map((x) => '<tr><td class="name">' + esc(x.r.studentName || '—') + '</td><td><b>' + x.score + '</b> / 10</td><td>' + nfmt(x.score * 10, 1) + '%</td></tr>').join('') : '';
+      const top = d.list.slice().sort((a, b) => this.mnfScores(b)[s.key] - this.mnfScores(a)[s.key])
+        .filter((r) => this.mnfScores(r)[s.key] >= 5).slice(0, 5);
+      const topRows = top.length ? top.map((r, i) => '<tr><td>' + (i + 1) + '</td><td class="name">' + esc(r.studentName || '—') + '</td><td><b>' + this.mnfScores(r)[s.key] + '</b> / 10</td></tr>').join('') :
+        '<tr><td colspan="3" class="rpt-empty">لا يوجد طلاب بمستوى متقن (≥5/10).</td></tr>';
+      const recs = s.missing.length ? [
+        'ابدأ بمهارة «' + s.missing[0].skill + '» فهي الأدنى إتقاناً (' + nfmt(s.missing[0].pct, 1) + '%).',
+        'خصص 10 دقائق بداية كل حصة لمراجعة المهارات الثلاث الأولى في القائمة.',
+        'طبّق اختباراً تشخيصياً قصيراً بعد أسبوعين، واستهدف إتقاناً ≥ 70%.',
+        'تابع الطلاب الضعاف في مجموعة صغيرة مرتين أسبوعياً.'
+      ] : [
+        'المستوى العام جيد؛ حافظ على التمارين القصيرة الأسبوعية.',
+        'ركّز على الأسئلة ذات الإتقان الأقل من 80% لرفع المستوى.',
+        'استخدم أسئلة التحدي للطلاب المتفوقين.'
+      ];
+      pages += '<section class="rpt-page">' + pageTop(s.label, d.g.name + ' · ' + d.section + ' · ' + d.school, si + 1) +
+        '<div class="rpt-kpis">' +
+          '<div class="rpt-kpi"><b>' + nfmt(s.avg, 1) + '</b><span>متوسط الدرجة /10</span></div>' +
+          '<div class="rpt-kpi"><b>' + nfmt(s.passPct, 1) + '%</b><span>نسبة المتقنين (≥5)</span></div>' +
+          '<div class="rpt-kpi"><b>' + s.weak + '</b><span>طلاب دون المتقن</span></div>' +
+          '<div class="rpt-kpi"><b>' + s.max + '</b><span>أعلى درجة</span></div>' +
+        '</div>' +
+        '<div class="rpt-grid"><div class="rpt-card"><h3>درجات الطلاب — ' + esc(s.label) + '</h3><div class="rpt-tbl"><table><thead><tr><th>#</th><th>اسم الطالب</th><th>الدرجة</th><th>النسبة</th><th>التقدير</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
+        '<div class="rpt-card"><h3>توزيع الدرجات</h3>' + dist + '<div class="rpt-note">كل عمود يمثل عدد الطلاب داخل فئة الدرجات.</div></div></div>' +
+        '<div class="rpt-grid two"><div class="rpt-card"><h3>المهارات المفقودة (إتقان أقل من 60%)</h3>' +
+          (s.missing.length ? '<div class="rpt-tbl"><table><thead><tr><th>المهارة</th><th>الإتقان</th><th>طلاب</th></tr></thead><tbody>' + missRows + '</tbody></table></div>' : '<div class="rpt-empty">لا توجد مهارات دون 60% — إتقان جيد.</div>') +
+        '</div><div class="rpt-card"><h3>الطلاب الضعاف (أقل من 5/10)</h3>' +
+          (s.weakStudents.length ? '<div class="rpt-tbl"><table><thead><tr><th>الطالب</th><th>الدرجة</th><th>النسبة</th></tr></thead><tbody>' + weakRows + '</tbody></table></div>' : '<div class="rpt-empty">لا يوجد طلاب دون 5/10.</div>') +
+        '</div></div>' +
+        '<div class="rpt-card"><h3>نسبة الإتقان لكل سؤال</h3>' + qbars + '</div>' +
+        '<div class="rpt-grid two"><div class="rpt-card"><h3>أبرز المتفوقين في ' + esc(s.label) + '</h3><div class="rpt-tbl"><table><thead><tr><th>#</th><th>الطالب</th><th>الدرجة</th></tr></thead><tbody>' + topRows + '</tbody></table></div></div>' +
+        '<div class="rpt-card"><h3>توصيات المادة</h3><ul class="rpt-list">' + recs.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div></div>' +
+        '<div class="rpt-card"><h3>مؤشرات إضافية</h3><div class="rpt-note" style="font-size:8.2px;line-height:1.9">' +
+          'عدد الطلاب: <b>' + d.list.length + '</b> · أعلى درجة: <b>' + s.max + '/10</b> · أدنى درجة: <b>' + s.min + '/10</b><br>' +
+          'نسبة الإتقان العامة: <b>' + nfmt(s.avgPct, 1) + '%</b> · عدد المهارات دون 60%: <b>' + s.missing.length + '</b> · الطلاب دون 5/10: <b>' + s.weak + '</b>' +
+        '</div></div>' +
+        '<div class="rpt-foot"><span>مبادرة منافسون · ' + esc(d.g.name) + '</span><span>التصحيح الآلي — الحسن المعشي · ' + esc(d.date) + '</span><span>صفحة ' + (si + 1) + ' من 4</span></div>' +
+        '</section>';
+    });
+
+    const weakRowsAll = d.weakAll.length ? d.weakAll.slice(0, 14).map((x) => '<tr><td class="name">' + esc(x.r.studentName || '—') + '</td><td><b>' + x.sc.total + '</b> / 30</td><td>' +
+      (x.weakSubjects.length ? esc(x.weakSubjects.join('، ')) : '—') + '</td><td><span class="rpt-pill">' + (x.sc.total < 10 ? 'علاجي مكثف' : 'دعم ومتابعة') + '</span></td></tr>').join('') : '';
+    const priorityRows = d.priorities.length ? d.priorities.map((p) => {
+      const action = p.pct < 40 ? 'إعادة تدريس المهارة في مجموعة صغيرة' : p.pct < 60 ? 'تدريب موجه + أوراق عمل قصيرة' : 'مراجعة سريعة + اختبار تشخيصي';
+      const time = p.pct < 40 ? '3 أسابيع' : 'أسبوعان';
+      return '<tr><td class="name">' + esc(p.skill) + '</td><td>' + esc(p.subject) + '</td><td>' + nfmt(p.pct, 1) + '%</td><td>' + esc(action) + '</td><td>' + time + '</td><td>اختبار قصير ≥ 70%</td></tr>';
+    }).join('') : '';
+    const subjBars = this.mnfBars(d.subjects.map((s) => ({ label: s.label, value: Math.round(s.avg * 10) / 10, text: nfmt(s.avg, 1), color: s.color })), { h: 120, max: 10, showValue: true });
+    const followRows = [
+      ['الأسبوع 1', 'تشخيص المهارات المستهدفة وتحديد المجموعات', 'معلم المادة', 'نتيجة تشخيصية'],
+      ['الأسبوع 2', 'تدريس علاجي + تدريب موجه وأوراق عمل', 'معلم المادة والمرشد الطلابي', 'أوراق عمل مكتملة'],
+      ['الأسبوع 3', 'اختبار قصير على المهارات المستهدفة', 'معلم المادة', 'إتقان ≥ 70%'],
+      ['الأسبوع 4', 'مراجعة وتثبيت + تقرير أثر الخطة', 'قائد المدرسة', 'تقرير أثر ومقارنة']
+    ].map((r) => '<tr><td>' + r[0] + '</td><td class="name">' + esc(r[1]) + '</td><td>' + esc(r[2]) + '</td><td>' + esc(r[3]) + '</td></tr>').join('');
+    pages += '<section class="rpt-page">' + pageTop('خطة التحسين المقترحة', 'بناءً على نتائج ' + d.list.length + ' طالباً · ' + d.g.name, 4) +
+      '<div class="rpt-kpis">' +
+        '<div class="rpt-kpi"><b>' + nfmt(d.overall.avg, 1) + '</b><span>متوسط المجموع /30</span></div>' +
+        '<div class="rpt-kpi"><b>' + nfmt(d.overall.passPct, 1) + '%</b><span>نسبة المتقنين (≥18)</span></div>' +
+        '<div class="rpt-kpi"><b>' + d.overall.weak + '</b><span>طلاب يحتاجون خطة</span></div>' +
+        '<div class="rpt-kpi"><b>' + d.overall.max + '</b><span>أعلى مجموع</span></div>' +
+      '</div>' +
+      '<div class="rpt-grid"><div class="rpt-card"><h3>مقارنة متوسطات المواد /10</h3>' + subjBars + '<div class="rpt-note">الفجوة بين أعلى وأدنى مادة تحدد أولوية الدعم.</div></div>' +
+      '<div class="rpt-card"><h3>ملخص تنفيذي</h3><div class="rpt-note" style="font-size:8.3px;line-height:1.9">' +
+        'متوسط المجموع <b>' + nfmt(d.overall.avg, 1) + '/30</b>، ونسبة المتقنين <b>' + nfmt(d.overall.passPct, 1) + '%</b>، وعدد الطلاب الذين يحتاجون خطة دعم <b>' + d.overall.weak + '</b>. ' +
+        'توجد <b>' + d.priorities.length + '</b> مهارة ذات أولوية (إتقان أقل من 60%). ' +
+        'الخطة المقترحة تركّز على المهارات الأدنى إتقاناً، مع متابعة أسبوعية وقياس أثر بعد أسبوعين.' +
+      '</div></div></div>' +
+      '<div class="rpt-table-wrap"><table><thead><tr><th>المهارة ذات الأولوية</th><th>المادة</th><th>الإتقان الحالي</th><th>الإجراء المقترح</th><th>المدة</th><th>مؤشر القياس</th></tr></thead><tbody>' +
+        (priorityRows || '<tr><td colspan="6" class="rpt-empty">لا توجد مهارات دون 60%.</td></tr>') + '</tbody></table></div>' +
+      '<div class="rpt-table-wrap"><table><thead><tr><th>الأسبوع</th><th>الإجراء</th><th>المسؤول</th><th>المؤشر</th></tr></thead><tbody>' + followRows + '</tbody></table></div>' +
+      '<div class="rpt-card"><h3>الطلاب الذين يحتاجون خطة دعم</h3>' +
+        (weakRowsAll ? '<div class="rpt-tbl"><table><thead><tr><th>الطالب</th><th>المجموع</th><th>المواد الضعيفة</th><th>نوع الدعم</th></tr></thead><tbody>' + weakRowsAll + '</tbody></table></div>' : '<div class="rpt-empty">لا يوجد طلاب دون 18/30.</div>') +
+      '</div>' +
+      '<div class="rpt-card"><h3>ملاحظات تنفيذية</h3><ul class="rpt-list">' +
+        '<li>تُعقد متابعة أسبوعية قصيرة لمراجعة تقدم الطلاب في المهارات المستهدفة.</li>' +
+        '<li>تُستخدم نتيجة الاختبار القصير في الأسبوع الثالث لقياس أثر الخطة وتعديلها.</li>' +
+        '<li>تُعمم الممارسات الناجحة بين معلمي المواد الثلاث، مع توثيق الدعم في ملف الطالب.</li>' +
+      '</ul></div>' +
+      '<div class="rpt-foot"><span>خطة تحسين مقترحة · مبادرة منافسون</span><span>التصحيح الآلي — الحسن المعشي · ' + esc(d.date) + '</span><span>صفحة 4 من 4</span></div>' +
+      '</section>';
+    const html = '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تحليل منافسون الشامل</title><style>' + css + '</style></head><body>' + pages + '</body></html>';
+    return html;
+  },
+
+  manafisounAnalysis() {
+    const html = this.buildMnfAnalysisHTML();
+    if (!html) { toast('لا توجد نتائج لتحليلها — صحّح واعتمد النتائج أولاً', 'err'); return; }
+    this.state.mnfAnalysisHTML = html;
+    const body = '<iframe id="mnfReportFrame" style="width:100%;height:68vh;border:1px solid #d9e3ef;border-radius:10px;background:#fff"></iframe>';
+    const foot = '<button class="btn btn-ghost" onclick="App.closeModal()">إغلاق</button><span class="sp"></span>' +
+      '<button class="btn btn-soft" onclick="App.downloadMnfAnalysis()"><svg class="ic"><use href="#i-download"/></svg> تنزيل HTML</button>' +
+      '<button class="btn btn-primary" onclick="App.printMnfAnalysis()"><svg class="ic"><use href="#i-printer"/></svg> طباعة / حفظ PDF (4 صفحات)</button>';
+    this.modal('التحليل الشامل — مبادرة منافسون', body, foot, true);
+    const f = $('mnfReportFrame');
+    if (f) f.srcdoc = html;
+  },
+
+  printMnfAnalysis() {
+    if (!this.state.mnfAnalysisHTML) this.state.mnfAnalysisHTML = this.buildMnfAnalysisHTML();
+    if (!this.state.mnfAnalysisHTML) { toast('لا توجد نتائج', 'err'); return; }
+    Print.frame(this.state.mnfAnalysisHTML);
+  },
+
+  downloadMnfAnalysis() {
+    if (!this.state.mnfAnalysisHTML) this.state.mnfAnalysisHTML = this.buildMnfAnalysisHTML();
+    if (!this.state.mnfAnalysisHTML) { toast('لا توجد نتائج', 'err'); return; }
+    downloadBlob(new Blob([this.state.mnfAnalysisHTML], { type: 'text/html;charset=utf-8' }), 'تحليل_منافسون_شامل.html');
+    toast('تم تنزيل التقرير — افتحه ثم اطبع أو احفظ PDF', 'ok');
+  },
+
+  mnfAnalysisFromResults() {
+    const cur = this.currentResults();
+    this.state.manafisoun.grade = cur.gradeKey;
+    this.state.manafisoun.section = cur.section || '';
+    this.manafisounAnalysis();
   },
 
   /* يحمّل قالب الرصد الأصلي ويملؤه بالنتائج، ثم يعيد Buffer للتنزيل */
